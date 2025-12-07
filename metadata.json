@@ -1,0 +1,5 @@
+{
+  "name": "MathAI Solver",
+  "description": "An intelligent math problem solver powered by SiliconFlow AI, capable of providing step-by-step solutions with LaTeX rendering.",
+  "requestFramePermissions": []
+}

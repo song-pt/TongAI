@@ -1,0 +1,156 @@
+
+-- 1. 创建访问密钥表（存储账号）
+create table if not exists access_keys (
+  id uuid default gen_random_uuid() primary key,
+  code text unique not null,
+  note text,
+  is_active boolean default true,
+  created_at timestamptz default now(),
+  total_tokens bigint default 0,
+  token_limit bigint default null
+);
+
+-- 2. 创建设备会话表（存储设备记录）
+create table if not exists device_sessions (
+  id uuid default gen_random_uuid() primary key,
+  key_code text references access_keys(code) on delete cascade,
+  device_id text not null,
+  last_seen timestamptz default now(),
+  device_info text default 'Unknown',
+  total_tokens bigint default 0,
+  is_banned boolean default false,
+  unique(key_code, device_id)
+);
+
+-- 3. 创建聊天历史表
+create table if not exists chat_history (
+  id uuid default gen_random_uuid() primary key,
+  key_code text references access_keys(code) on delete cascade,
+  question text not null,
+  answer text not null,
+  subject text default 'math',
+  grade_label text,
+  device_id text,
+  created_at timestamptz default now()
+);
+
+-- 4. 创建系统配置表
+create table if not exists app_config (
+  key text primary key,
+  value text not null
+);
+
+-- 插入默认配置 (包含 admin_password 和 ai_mode)
+insert into app_config (key, value) values 
+('app_title', 'TongAI'),
+('admin_password', '114514'),
+('ai_mode', 'solver')
+on conflict (key) do nothing;
+
+-- 开启 RLS 策略 (允许公开读取配置，写入需通过函数)
+alter table app_config enable row level security;
+create policy "Allow public read access" on app_config for select using (true);
+create policy "Allow all access for authenticated/service role" on app_config for all using (true) with check (true);
+
+-- 5. 创建登录函数
+create or replace function login_with_key(
+  input_code text, 
+  input_device_id text,
+  input_user_agent text
+)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  found_key text;
+  device_is_banned boolean;
+begin
+  select code into found_key from access_keys where code = input_code and is_active = true;
+  
+  if found_key is null then
+    return false;
+  end if;
+
+  select is_banned into device_is_banned from device_sessions where key_code = found_key and device_id = input_device_id;
+  if device_is_banned is true then
+    return false;
+  end if;
+
+  insert into device_sessions (key_code, device_id, last_seen, device_info, is_banned)
+  values (found_key, input_device_id, now(), input_user_agent, false)
+  on conflict (key_code, device_id) do update
+  set last_seen = now(), device_info = input_user_agent;
+
+  return true;
+end;
+$$;
+
+-- 6. 创建计费与限额检查函数
+create or replace function increment_token_usage(
+  input_code text,
+  input_device_id text,
+  usage_amount int
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  updated_total bigint;
+  limit_val bigint;
+  key_id uuid;
+begin
+  update access_keys 
+  set total_tokens = total_tokens + usage_amount 
+  where code = input_code
+  returning id, total_tokens, token_limit into key_id, updated_total, limit_val;
+
+  update device_sessions 
+  set total_tokens = total_tokens + usage_amount 
+  where key_code = input_code and device_id = input_device_id;
+
+  if limit_val is not null and updated_total >= limit_val then
+    update access_keys set is_active = false where id = key_id;
+  end if;
+end;
+$$;
+
+-- 7. 创建历史记录插入函数 (保留最新50条)
+create or replace function add_chat_message(
+  p_key_code text,
+  p_question text,
+  p_answer text,
+  p_subject text,
+  p_grade_label text,
+  p_device_id text
+)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  insert into chat_history (key_code, question, answer, subject, grade_label, device_id)
+  values (p_key_code, p_question, p_answer, p_subject, p_grade_label, p_device_id);
+
+  delete from chat_history
+  where id in (
+    select id from chat_history
+    where key_code = p_key_code
+    order by created_at desc
+    offset 50
+  );
+end;
+$$;
+
+-- 8. [BUG FIX] 创建配置更新函数 (绕过RLS限制)
+create or replace function update_config_value(key_name text, new_value text)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  insert into app_config (key, value) values (key_name, new_value)
+  on conflict (key) do update set value = new_value;
+end;
+$$;

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+/* KaTeX specific overrides */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  margin: 1em 0;
+}
+
+/* Hide MathML output to prevent double rendering */
+.katex-mathml {
+  display: none !important;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+}
+
+/* Fix weird square root lines in Tailwind */
+.katex * {
+  border-color: currentColor;
+}
+.katex svg {
+  overflow: visible !important;
+  display: block;
+}
+.katex svg path {
+  stroke: currentColor;
+  fill: currentColor;
+  stroke-width: 1.5px;
+}
+
+/* Ensure text doesn't overflow in messages */
+.prose {
+  max-width: 100%;
+}
