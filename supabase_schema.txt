@@ -22,7 +22,6 @@ create table if not exists image_access_keys (
 );
 
 -- 2. 创建设备会话表（存储设备记录）
--- [MODIFIED] Added image_key_code to track nested auth
 create table if not exists device_sessions (
   id uuid default gen_random_uuid() primary key,
   key_code text references access_keys(code) on delete cascade,
@@ -31,9 +30,16 @@ create table if not exists device_sessions (
   device_info text default 'Unknown',
   total_tokens bigint default 0,
   is_banned boolean default false,
-  image_key_code text references image_access_keys(code) on delete set null,
   unique(key_code, device_id)
 );
+
+-- 安全地添加列：检查 image_key_code 是否存在，不存在则添加
+do $$
+begin
+    if not exists (select 1 from information_schema.columns where table_name = 'device_sessions' and column_name = 'image_key_code') then
+        alter table device_sessions add column image_key_code text references image_access_keys(code) on delete set null;
+    end if;
+end $$;
 
 -- 3. 创建聊天历史表
 create table if not exists chat_history (
@@ -60,9 +66,14 @@ insert into app_config (key, value) values
 ('ai_mode', 'solver')
 on conflict (key) do nothing;
 
--- 开启 RLS 策略 (允许公开读取配置，写入需通过函数)
+-- 开启 RLS 策略
 alter table app_config enable row level security;
+
+-- [FIX] 安全创建策略：先删除旧策略，再创建新策略，防止 Error 42710
+drop policy if exists "Allow public read access" on app_config;
 create policy "Allow public read access" on app_config for select using (true);
+
+drop policy if exists "Allow all access for authenticated/service role" on app_config;
 create policy "Allow all access for authenticated/service role" on app_config for all using (true) with check (true);
 
 -- 5. 创建登录函数
@@ -111,8 +122,6 @@ security definer
 as $$
 declare
   found_img_key record;
-  current_usage bigint;
-  limit_val bigint;
 begin
   -- 1. Check Image Key Exists and is Active
   select * into found_img_key from image_access_keys where code = input_image_code and is_active = true;
