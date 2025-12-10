@@ -1,3 +1,4 @@
+
 // Manually define ImportMetaEnv to fix missing vite/client types
 declare global {
   interface ImportMetaEnv {
@@ -14,19 +15,35 @@ declare global {
   }
 }
 
+// Helper function to safely get environment variables
+const getEnv = (key: string, defaultValue: string = ''): string => {
+  try {
+    // Check if import.meta.env exists (it might be undefined in raw ESM environments)
+    // We use a safe check pattern here
+    const env = import.meta.env;
+    if (env && typeof env === 'object') {
+      return env[key] || defaultValue;
+    }
+  } catch (e) {
+    console.warn('Error reading environment variable:', key);
+  }
+  return defaultValue;
+};
+
 // API Configuration using Environment Variables
-export const SILICONFLOW_API_KEY = import.meta.env.VITE_SILICONFLOW_API_KEY || '';
+export const SILICONFLOW_API_KEY = getEnv('VITE_SILICONFLOW_API_KEY');
 
-export const SILICONFLOW_BASE_URL = import.meta.env.VITE_SILICONFLOW_BASE_URL || 'https://api.siliconflow.cn/v1';
+export const SILICONFLOW_BASE_URL = getEnv('VITE_SILICONFLOW_BASE_URL', 'https://api.siliconflow.cn/v1');
 
-export const AI_MODEL = 'deepseek-ai/DeepSeek-V3.2'; 
+export const AI_MODEL = 'deepseek-ai/DeepSeek-V3'; 
+export const AI_VISION_MODEL = 'Qwen/Qwen3-VL-30B-A3B-Instruct';
 
 // Supabase Configuration
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+export const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
+export const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 
 // Admin Password
-export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '114514';
+export const ADMIN_PASSWORD = getEnv('VITE_ADMIN_PASSWORD', '114514');
 
 export const SYSTEM_PROMPT = "You are a helpful and patient tutor. Solve the problem clearly, showing all steps. \n\nIMPORTANT FORMATTING RULES:\n1. If the subject is Math, you MUST output mathematical expressions using LaTeX format.\n2. Enclose inline math in single dollar signs like $E=mc^2$.\n3. Enclose block math in double dollar signs like $$\\frac{a}{b}$$.\n4. Do NOT use \\( \\) or \\[ \\] delimiters.\n5. Do NOT output raw LaTeX commands like \\sqrt{} without enclosing them in dollar signs.\n6. CRITICAL: Do NOT repeat the formula in plain text if you have provided the LaTeX version. For example, do not write 'x equals 2 ($x=2$)'. Just write '$x=2$'.";
 

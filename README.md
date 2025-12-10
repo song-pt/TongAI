@@ -1,7 +1,7 @@
 
-### TongAI is a full-stack AI platform. It integrates large models for multi-disciplinary (math/language/English) tutoring and provides a complete backend management system. It also offers convenient key distribution, usage management, and automatic circuit breaker functionality. I'm just a student, and I welcome any questions you may have to help me improve! Thank you!
+###TongAI is a full-stack AI platform. It integrates large models for multi-disciplinary (math/language/English) tutoring and provides a complete backend management system. It also offers convenient key distribution, usage management, and automatic circuit breaker functionality. I'm just a student, and I welcome any questions you may have to help me improve! Thank you!
 
-## If you need to switch models, please go to line 22 of the constants.ts file.
+##If you need to switch models, please go to line 22 of the constants.ts file.
 
 # Deploying Tong AI
 
@@ -54,4 +54,4 @@ Once this is done, your system is fully operational!
 5. 将文件中的所有内容复制并粘贴到 Supabase 的编辑器中。
 6. 点击 **Run** (运行) 按钮。
 
-完成以上步骤后，您的系统即可完美运行！
+操作完毕后即可运行

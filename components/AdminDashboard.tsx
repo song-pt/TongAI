@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode } from '../services/supabase';
-import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode } from '../types';
-import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot } from 'lucide-react';
+import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey } from '../services/supabase';
+import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey } from '../types';
+import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -14,9 +14,12 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onLanguageChange }) => {
-  const [activeTab, setActiveTab] = useState<'keys' | 'devices' | 'settings'>('keys');
+  const [activeTab, setActiveTab] = useState<'keys' | 'devices' | 'settings' | 'imageKeys'>('keys');
+  
   const [keys, setKeys] = useState<AccessKey[]>([]);
+  const [imageKeys, setImageKeys] = useState<ImageAccessKey[]>([]);
   const [devices, setDevices] = useState<DeviceSession[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [newCode, setNewCode] = useState('');
   const [newNote, setNewNote] = useState('');
@@ -39,13 +42,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   const [historyLogs, setHistoryLogs] = useState<ChatHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Limit Modal State
+  // Limit Modal State (Shared for Main and Image Keys)
   const [limitModal, setLimitModal] = useState<{
     isOpen: boolean;
     keyId: string;
     keyName: string;
     currentLimit: number | null;
-  }>({ isOpen: false, keyId: '', keyName: '', currentLimit: null });
+    type: 'main' | 'image';
+  }>({ isOpen: false, keyId: '', keyName: '', currentLimit: null, type: 'main' });
   const [newLimitValue, setNewLimitValue] = useState<string>('');
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [isSavingLimit, setIsSavingLimit] = useState(false);
@@ -56,6 +60,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       if (activeTab === 'keys') {
         const data = await fetchKeys();
         setKeys(data);
+      } else if (activeTab === 'imageKeys') {
+        const data = await fetchImageKeys();
+        setImageKeys(data);
+        // Also fetch devices to calculate active sessions per image key locally if needed
+        const dev = await fetchDevices();
+        setDevices(dev);
       } else if (activeTab === 'devices') {
         const data = await fetchDevices();
         setDevices(data);
@@ -66,7 +76,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         setAiMode(mode);
       }
     } catch (error) {
-      alert('加载数据失败');
+      console.error("Dashboard Load Error:", error);
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      alert(`加载数据失败: ${msg}\n请检查数据库连接或 RLS 策略。`);
     } finally {
       setLoading(false);
     }
@@ -95,13 +107,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     }
   }, [historyModal]);
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAddKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCode.trim()) return;
     
     setIsSubmitting(true);
     try {
-      await addKey(newCode.trim(), newNote.trim());
+      if (activeTab === 'keys') {
+        await addKey(newCode.trim(), newNote.trim());
+      } else if (activeTab === 'imageKeys') {
+        await addImageKey(newCode.trim(), newNote.trim());
+      }
       setNewCode('');
       setNewNote('');
       loadData();
@@ -112,18 +128,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     }
   };
 
-  const handleToggle = async (key: AccessKey) => {
-    // Check if banned due to quota
+  const handleToggleKey = async (key: AccessKey) => {
     if (!key.is_active && key.token_limit !== null && key.total_tokens >= key.token_limit) {
-      if (!confirm(`该密钥因超出 Token 限额 (${key.token_limit}) 而被禁用。强制启用可能导致其立即被再次禁用。\n建议先提高限额。\n\n确定要强制启用吗？`)) {
-        return;
-      }
+      if (!confirm(`该密钥因超出 Token 限额 (${key.token_limit}) 而被禁用。强制启用可能导致其立即被再次禁用。\n建议先提高限额。\n\n确定要强制启用吗？`)) return;
     } else {
        if (!confirm(`确定要${key.is_active ? t.ban : t.enable}密钥 "${key.code}" 吗？`)) return;
     }
-    
     try {
       await toggleKeyStatus(key.id, key.is_active);
+      loadData();
+    } catch (error) {
+      alert('操作失败');
+    }
+  };
+
+  const handleToggleImageKey = async (key: ImageAccessKey) => {
+    if (!key.is_active && key.image_limit !== null && key.total_images >= key.image_limit) {
+       if (!confirm(`该图片密钥因超出图片数量限额 (${key.image_limit}) 而被禁用。强制启用可能导致其立即被再次禁用。\n建议先提高限额。\n\n确定要强制启用吗？`)) return;
+    } else {
+       if (!confirm(`确定要${key.is_active ? t.ban : t.enable}图片密钥 "${key.code}" 吗？`)) return;
+    }
+    try {
+      await toggleImageKeyStatus(key.id, key.is_active);
       loadData();
     } catch (error) {
       alert('操作失败');
@@ -133,7 +159,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   const handleDelete = async (code: string) => {
     if (!confirm(`警告：确定要彻底删除密钥 "${code}" 吗？这将清除所有关联记录！`)) return;
     try {
-      await deleteKey(code);
+      if (activeTab === 'keys') {
+        await deleteKey(code);
+      } else if (activeTab === 'imageKeys') {
+        await deleteImageKey(code);
+      }
       loadData();
     } catch (error) {
       alert('删除失败');
@@ -157,20 +187,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     setHistoryModal({ isOpen: true, type, value, title });
   };
 
-  const openLimitModal = (key: AccessKey) => {
+  const openLimitModal = (key: any, type: 'main' | 'image') => {
+    const limit = type === 'main' ? key.token_limit : key.image_limit;
     setLimitModal({
       isOpen: true,
       keyId: key.id,
       keyName: key.code,
-      currentLimit: key.token_limit,
+      currentLimit: limit,
+      type: type
     });
     // Set initial values
-    if (key.token_limit === null) {
+    if (limit === null) {
       setIsUnlimited(true);
       setNewLimitValue('');
     } else {
       setIsUnlimited(false);
-      setNewLimitValue(key.token_limit.toString());
+      setNewLimitValue(limit.toString());
     }
   };
 
@@ -183,7 +215,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     setIsSavingLimit(true);
     try {
       const limit = isUnlimited ? null : parseInt(newLimitValue, 10);
-      await updateKeyLimit(limitModal.keyId, limit);
+      if (limitModal.type === 'main') {
+        await updateKeyLimit(limitModal.keyId, limit);
+      } else {
+        await updateImageKeyLimit(limitModal.keyId, limit);
+      }
       setLimitModal(prev => ({ ...prev, isOpen: false }));
       loadData();
     } catch (error) {
@@ -221,6 +257,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
 
   const isMobile = (info: string) => /mobile|android|iphone|ipad/i.test(info);
 
+  // Helper to get linked devices for an image key
+  const getLinkedDevicesForImageKey = (imgCode: string) => {
+    return devices.filter(d => d.image_key_code === imgCode);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -232,29 +273,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         </div>
         <div className="flex items-center gap-4">
           <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} variant="light" />
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
              <button
               onClick={() => setActiveTab('keys')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'keys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'keys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
              >
                {t.tabKeys}
              </button>
              <button
+              onClick={() => setActiveTab('imageKeys')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'imageKeys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               <ImageIcon className="w-3 h-3" /> 图片密钥
+             </button>
+             <button
               onClick={() => setActiveTab('devices')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'devices' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'devices' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
              >
                {t.tabDevices}
              </button>
              <button
               onClick={() => setActiveTab('settings')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
              >
                {t.tabSettings}
              </button>
           </div>
           <button 
             onClick={onLogout}
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors whitespace-nowrap"
           >
             <LogOut className="w-4 h-4" />
             {t.logout}
@@ -367,21 +414,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
           </section>
         )}
 
-        {/* KEY MANAGEMENT TAB */}
-        {activeTab === 'keys' && (
+        {/* KEYS TAB & IMAGE KEYS TAB SHARED LOGIC */}
+        {(activeTab === 'keys' || activeTab === 'imageKeys') && (
           <>
             {/* Add Key Form */}
             <section className="bg-white rounded-2xl shadow-sm border p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Plus className="w-5 h-5 text-purple-600" />
-                {t.addKeyTitle}
+                {activeTab === 'keys' ? t.addKeyTitle : '分发新图片密钥'}
               </h2>
-              <form onSubmit={handleAdd} className="flex gap-4 flex-wrap sm:flex-nowrap">
+              <form onSubmit={handleAddKey} className="flex gap-4 flex-wrap sm:flex-nowrap">
                 <input
                   type="text"
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="密钥 (例如: vip-888)"
+                  placeholder={activeTab === 'keys' ? "密钥 (例如: vip-888)" : "图片密钥 (例如: img-vip-001)"}
                   className="flex-1 min-w-[200px] px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-200 outline-none"
                   required
                 />
@@ -402,10 +449,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
               </form>
             </section>
 
-            {/* Keys List */}
+            {/* List */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-700">{t.tabKeys} ({keys.length})</h2>
+                <h2 className="text-lg font-semibold text-gray-700">
+                  {activeTab === 'keys' ? `${t.tabKeys} (${keys.length})` : `图片密钥列表 (${imageKeys.length})`}
+                </h2>
                 <button onClick={loadData} className="text-sm text-purple-600 hover:underline">{t.refresh}</button>
               </div>
               
@@ -413,64 +462,92 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                 <div className="flex justify-center py-12">
                   <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
                 </div>
-              ) : keys.length === 0 ? (
+              ) : (activeTab === 'keys' ? keys.length : imageKeys.length) === 0 ? (
                 <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed">
                   {t.noKeys}
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {keys.map((key) => {
-                    // Calculate Quota Percentage
-                    const limit = key.token_limit;
-                    const usage = key.total_tokens;
+                  {(activeTab === 'keys' ? keys : imageKeys).map((item: any) => {
+                    // Logic adaptation for generic item (AccessKey or ImageAccessKey)
+                    const isImageKey = activeTab === 'imageKeys';
+                    const code = item.code;
+                    const limit = isImageKey ? item.image_limit : item.token_limit;
+                    const usage = isImageKey ? item.total_images : item.total_tokens;
                     const isOverLimit = limit !== null && usage >= limit;
                     const percent = limit ? Math.min((usage / limit) * 100, 100) : 0;
                     
+                    // Specific logic for connected devices display
+                    let connectedInfo = null;
+                    if (isImageKey) {
+                      const linkedDevices = getLinkedDevicesForImageKey(code);
+                      connectedInfo = (
+                        <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">
+                           <p className="font-semibold mb-1">已关联设备 ({linkedDevices.length}):</p>
+                           {linkedDevices.length === 0 ? (
+                             <span className="text-gray-400">无</span>
+                           ) : (
+                             <ul className="space-y-1 max-h-20 overflow-y-auto">
+                               {linkedDevices.map(d => (
+                                 <li key={d.device_id} className="flex justify-between">
+                                   <span>{d.device_id.slice(0, 6)}...</span>
+                                   <span className="text-purple-600 font-mono">{d.key_code}</span>
+                                 </li>
+                               ))}
+                             </ul>
+                           )}
+                        </div>
+                      );
+                    }
+                    
                     return (
                     <div 
-                      key={key.id} 
-                      className={`bg-white p-5 rounded-2xl border transition-all hover:shadow-md ${!key.is_active ? 'opacity-80' : ''}`}
+                      key={item.id} 
+                      className={`bg-white p-5 rounded-2xl border transition-all hover:shadow-md ${!item.is_active ? 'opacity-80' : ''}`}
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <div className="flex items-center gap-2">
-                             <h3 className="font-mono text-xl font-bold text-gray-800 tracking-wide">{key.code}</h3>
-                             {isOverLimit && !key.is_active && (
+                             <h3 className="font-mono text-xl font-bold text-gray-800 tracking-wide">{code}</h3>
+                             {isOverLimit && !item.is_active && (
                                <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 flex items-center gap-0.5">
-                                 <AlertTriangle className="w-3 h-3" /> 超限封禁
+                                 <AlertTriangle className="w-3 h-3" /> 超限
                                </span>
                              )}
                           </div>
-                          <p className="text-sm text-gray-500 mt-1">{key.note || '无备注'}</p>
+                          <p className="text-sm text-gray-500 mt-1">{item.note || '无备注'}</p>
                         </div>
-                        <div className={`px-2 py-0.5 text-xs rounded-full font-medium ${key.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {key.is_active ? t.enable : t.ban}
+                        <div className={`px-2 py-0.5 text-xs rounded-full font-medium ${item.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {item.is_active ? t.enable : t.ban}
                         </div>
                       </div>
 
                       <div className="space-y-3 mb-4">
                          {/* Stats Row */}
                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
-                                <Smartphone className="w-4 h-4 text-gray-400" />
-                                <div>
-                                  <p className="text-xs text-gray-400">设备数</p>
-                                  <span className="font-bold text-gray-900">{key.device_sessions?.[0]?.count || 0}</span>
-                                </div>
-                            </div>
+                            {/* For main keys, show device count. For image keys, we show linked count in the details below */}
+                            {!isImageKey && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                                  <Smartphone className="w-4 h-4 text-gray-400" />
+                                  <div>
+                                    <p className="text-xs text-gray-400">设备数</p>
+                                    <span className="font-bold text-gray-900">{item.device_sessions?.[0]?.count || 0}</span>
+                                  </div>
+                              </div>
+                            )}
                              <div 
-                                onClick={() => openLimitModal(key)}
-                                className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group relative"
+                                onClick={() => openLimitModal(item, isImageKey ? 'image' : 'main')}
+                                className={`flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group relative ${isImageKey ? 'col-span-2' : ''}`}
                                 title="点击设置限额"
                              >
                                 <Gauge className={`w-4 h-4 ${isOverLimit ? 'text-red-500' : 'text-blue-500'}`} />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs text-gray-400 flex items-center justify-between">
-                                    Token
+                                    {isImageKey ? '图片数量' : 'Token'}
                                     <span className="group-hover:opacity-100 opacity-0 text-[10px] text-blue-600 font-bold transition-opacity">设置</span>
                                   </p>
                                   <div className="flex items-baseline gap-1 font-bold text-gray-900 truncate">
-                                    <span>{key.total_tokens}</span>
+                                    <span>{usage}</span>
                                     <span className="text-gray-400 font-normal text-xs">/</span>
                                     {limit === null ? (
                                       <InfinityIcon className="w-3 h-3 text-gray-400" />
@@ -491,29 +568,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                               ></div>
                            </div>
                          )}
+
+                         {/* Image Key Connected Details */}
+                         {connectedInfo}
                       </div>
 
                       <div className="flex items-center gap-2 pt-2 border-t mt-2">
-                         <button
-                           onClick={() => openHistory('key', key.code, `密钥 ${key.code} 的历史记录`)}
-                           className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                         >
-                           <MessageSquare className="w-4 h-4" />
-                           {t.history}
-                         </button>
+                        {/* Only Main Keys have history currently in this UI logic, unless we filter history by image usage later */}
+                        {!isImageKey && (
+                           <button
+                             onClick={() => openHistory('key', code, `密钥 ${code} 的历史记录`)}
+                             className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                           >
+                             <MessageSquare className="w-4 h-4" />
+                             {t.history}
+                           </button>
+                        )}
                         <button
-                          onClick={() => handleToggle(key)}
+                          onClick={() => isImageKey ? handleToggleImageKey(item) : handleToggleKey(item)}
                           className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                            key.is_active 
+                            item.is_active 
                               ? 'text-amber-600 hover:bg-amber-50' 
                               : 'text-green-600 hover:bg-green-50'
                           }`}
                         >
                           <Power className="w-4 h-4" />
-                          {key.is_active ? t.ban : t.enable}
+                          {item.is_active ? t.ban : t.enable}
                         </button>
                         <button
-                          onClick={() => handleDelete(key.code)}
+                          onClick={() => handleDelete(code)}
                           className="w-10 flex items-center justify-center py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="删除"
                         >
@@ -552,6 +635,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                         <tr>
                           <th className="px-6 py-3 font-medium">{t.deviceType}</th>
                           <th className="px-6 py-3 font-medium">{t.deviceKey}</th>
+                          <th className="px-6 py-3 font-medium">关联图片密钥</th>
                           <th className="px-6 py-3 font-medium">{t.deviceId}</th>
                           <th className="px-6 py-3 font-medium">{t.status}</th>
                           <th className="px-6 py-3 font-medium">Token</th>
@@ -576,6 +660,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                                 <span className="font-mono bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">
                                   {device.key_code}
                                 </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                {device.image_key_code ? (
+                                  <span className="font-mono bg-pink-50 text-pink-700 px-2 py-1 rounded border border-pink-100 text-xs">
+                                    {device.image_key_code}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">-</span>
+                                )}
                               </td>
                               <td className="px-6 py-4 text-gray-500 font-mono text-xs">
                                 <div className="flex items-center gap-1">
@@ -699,14 +792,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
           </div>
         )}
 
-        {/* Token Limit Modal */}
+        {/* Limit Modal */}
         {limitModal.isOpen && (
            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                     <Gauge className="w-6 h-6 text-purple-600" />
-                    设置 Token 限额
+                    {limitModal.type === 'main' ? '设置 Token 限额' : '设置图片数量限额'}
                   </h3>
                   <button 
                     onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))}
@@ -718,8 +811,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                 
                 <div className="space-y-4">
                   <div className="p-3 bg-purple-50 rounded-xl text-sm text-purple-800 border border-purple-100">
-                     正在为密钥 <strong>{limitModal.keyName}</strong> 设置限额。
-                     <br/>当前用量: {keys.find(k => k.id === limitModal.keyId)?.total_tokens}
+                     正在为{limitModal.type === 'main' ? '主密钥' : '图片密钥'} <strong>{limitModal.keyName}</strong> 设置限额。
+                     <br/>当前用量: {limitModal.type === 'main' 
+                       ? keys.find(k => k.id === limitModal.keyId)?.total_tokens 
+                       : imageKeys.find(k => k.id === limitModal.keyId)?.total_images}
                   </div>
 
                   <div className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50 cursor-pointer" onClick={() => setIsUnlimited(!isUnlimited)}>
@@ -731,16 +826,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
 
                   {!isUnlimited && (
                     <div className="space-y-2 animate-in slide-in-from-top-2">
-                       <label className="text-sm font-semibold text-gray-700">Token 上限数值</label>
+                       <label className="text-sm font-semibold text-gray-700">
+                         {limitModal.type === 'main' ? 'Token 上限数值' : '图片数量上限'}
+                       </label>
                        <input 
                          type="number" 
                          value={newLimitValue}
                          onChange={(e) => setNewLimitValue(e.target.value)}
                          className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 font-mono text-lg"
-                         placeholder="例如: 10000"
+                         placeholder={limitModal.type === 'main' ? "例如: 10000" : "例如: 50"}
                          autoFocus
                        />
-                       <p className="text-xs text-gray-500">当总用量达到此数值时，该密钥将被自动禁用。</p>
+                       <p className="text-xs text-gray-500">当用量达到此数值时，该密钥将被自动禁用。</p>
                     </div>
                   )}
 

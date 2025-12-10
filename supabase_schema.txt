@@ -10,7 +10,19 @@ create table if not exists access_keys (
   token_limit bigint default null
 );
 
+-- 9. [NEW] 创建图像访问密钥表
+create table if not exists image_access_keys (
+  id uuid default gen_random_uuid() primary key,
+  code text unique not null,
+  note text,
+  is_active boolean default true,
+  created_at timestamptz default now(),
+  total_images bigint default 0,
+  image_limit bigint default null
+);
+
 -- 2. 创建设备会话表（存储设备记录）
+-- [MODIFIED] Added image_key_code to track nested auth
 create table if not exists device_sessions (
   id uuid default gen_random_uuid() primary key,
   key_code text references access_keys(code) on delete cascade,
@@ -19,6 +31,7 @@ create table if not exists device_sessions (
   device_info text default 'Unknown',
   total_tokens bigint default 0,
   is_banned boolean default false,
+  image_key_code text references image_access_keys(code) on delete set null,
   unique(key_code, device_id)
 );
 
@@ -86,6 +99,42 @@ begin
 end;
 $$;
 
+-- 10. [NEW] 验证并绑定图像密钥函数 (嵌套逻辑)
+create or replace function verify_image_key(
+  input_image_code text,
+  input_main_code text,
+  input_device_id text
+)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  found_img_key record;
+  current_usage bigint;
+  limit_val bigint;
+begin
+  -- 1. Check Image Key Exists and is Active
+  select * into found_img_key from image_access_keys where code = input_image_code and is_active = true;
+  
+  if found_img_key is null then
+    return false;
+  end if;
+
+  -- 2. Check Quota
+  if found_img_key.image_limit is not null and found_img_key.total_images >= found_img_key.image_limit then
+    return false;
+  end if;
+
+  -- 3. Update Session to Link Image Key with Main Key Session
+  update device_sessions 
+  set image_key_code = input_image_code
+  where key_code = input_main_code and device_id = input_device_id;
+
+  return true;
+end;
+$$;
+
 -- 6. 创建计费与限额检查函数
 create or replace function increment_token_usage(
   input_code text,
@@ -112,6 +161,30 @@ begin
 
   if limit_val is not null and updated_total >= limit_val then
     update access_keys set is_active = false where id = key_id;
+  end if;
+end;
+$$;
+
+-- 11. [NEW] 增加图片使用计数函数
+create or replace function increment_image_usage(
+  input_image_code text
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  updated_total bigint;
+  limit_val bigint;
+  key_id uuid;
+begin
+  update image_access_keys 
+  set total_images = total_images + 1
+  where code = input_image_code
+  returning id, total_images, image_limit into key_id, updated_total, limit_val;
+
+  if limit_val is not null and updated_total >= limit_val then
+    update image_access_keys set is_active = false where id = key_id;
   end if;
 end;
 $$;

@@ -1,8 +1,8 @@
 
-import { SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, AI_MODEL, SYSTEM_PROMPT } from '../constants';
+import { SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, AI_MODEL, AI_VISION_MODEL, SYSTEM_PROMPT } from '../constants';
 import { prompts } from '../utils/translations';
 import { ApiResponse, ApiError, Language, AiMode } from '../types';
-import { recordTokenUsage } from './supabase';
+import { recordTokenUsage, recordImageUsage } from './supabase';
 
 export const solveMathProblem = async (
   problem: string, 
@@ -10,7 +10,9 @@ export const solveMathProblem = async (
   subject: string = 'math', 
   accessKey?: string,
   language: Language = 'zh-cn',
-  aiMode: AiMode = 'solver'
+  aiMode: AiMode = 'solver',
+  imageData?: string, // Base64 string of image
+  imageKey?: string   // Image access key code
 ): Promise<string> => {
   const url = `${SILICONFLOW_BASE_URL}/chat/completions`;
   
@@ -19,11 +21,14 @@ export const solveMathProblem = async (
     'Authorization': `Bearer ${SILICONFLOW_API_KEY}`
   };
 
-  let content = '';
+  // Determine Model: Switch to Vision model if image is present
+  const modelToUse = imageData ? AI_VISION_MODEL : AI_MODEL;
+
+  let promptContent = '';
 
   if (aiMode === 'normal') {
     // Normal Mode: Just send the problem as is, no persona prefix
-    content = problem;
+    promptContent = problem;
   } else {
     // Solver Mode: Use Persona and Grade Logic
     const promptSet = prompts[language];
@@ -35,7 +40,7 @@ export const solveMathProblem = async (
       prefix = promptSet.englishPrefix;
     }
 
-    content = `${prefix}${problem}`;
+    promptContent = `${prefix}${problem}`;
     
     if (grade) {
       const gradeMapZh: Record<string, string> = {
@@ -55,17 +60,36 @@ export const solveMathProblem = async (
       const methodSuffix = language === 'en' ? '.' : (language === 'zh-tw' ? '的方法解答。' : '的方法解答。');
 
       if (gradeMap[grade]) {
-        content += ` ${methodText}${gradeMap[grade]}${methodSuffix}`;
+        promptContent += ` ${methodText}${gradeMap[grade]}${methodSuffix}`;
       }
     }
   }
 
-  const body = {
-    model: AI_MODEL,
-    messages: [
+  // Construct Message Content (Text vs Vision)
+  let messages: any[] = [];
+  if (imageData) {
+    // Vision Payload
+    messages = [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: content }
-    ],
+      { 
+        role: "user", 
+        content: [
+          { type: "image_url", image_url: { url: imageData } }, // Put image first for Qwen usually
+          { type: "text", text: promptContent }
+        ] 
+      }
+    ];
+  } else {
+    // Standard Text Payload
+    messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: promptContent }
+    ];
+  }
+
+  const body = {
+    model: modelToUse,
+    messages: messages,
     stream: false,
     temperature: 0.7
   };
@@ -85,14 +109,21 @@ export const solveMathProblem = async (
     const data = await response.json() as ApiResponse;
     
     if (data.choices && data.choices.length > 0 && data.choices[0].message) {
-      // Track usage if accessKey is provided
-      if (accessKey && data.usage?.total_tokens) {
-        // Asynchronously record usage, don't block the UI
-        recordTokenUsage(accessKey, data.usage.total_tokens).catch(console.error);
-      } else if (accessKey) {
-        // Fallback estimation if API doesn't return usage (approx 1 token per 4 chars)
-        const estimated = Math.ceil((content.length + data.choices[0].message.content.length) / 3);
-        recordTokenUsage(accessKey, estimated).catch(console.error);
+      
+      // 1. Track Token Usage (Main Key)
+      if (accessKey) {
+         if (data.usage?.total_tokens) {
+           recordTokenUsage(accessKey, data.usage.total_tokens).catch(console.error);
+         } else {
+           // Fallback estimation
+           const estimated = Math.ceil((promptContent.length + data.choices[0].message.content.length) / 3);
+           recordTokenUsage(accessKey, estimated).catch(console.error);
+         }
+      }
+
+      // 2. Track Image Usage (Image Key)
+      if (imageData && imageKey) {
+        recordImageUsage(imageKey).catch(console.error);
       }
 
       return data.choices[0].message.content;

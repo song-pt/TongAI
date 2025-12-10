@@ -1,17 +1,53 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSWORD } from '../constants';
-import { AccessKey, DeviceSession, ChatHistoryItem, AiMode } from '../types';
+import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey } from '../types';
 
 // Initialize the Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Validate URL to prevent crash on load if env vars are missing
+const getSupabaseClient = () => {
+  const url = SUPABASE_URL;
+  const key = SUPABASE_ANON_KEY;
+  
+  // Strict validation to prevent runtime crashes
+  if (!url || !key || url === 'undefined' || key === 'undefined') {
+    console.warn('Supabase URL or Key missing/invalid. Using placeholder client.');
+    return createClient('https://placeholder.supabase.co', 'placeholder');
+  }
+
+  try {
+    // Validate URL format
+    new URL(url);
+    return createClient(url, key);
+  } catch (e) {
+    console.warn('Invalid Supabase URL. Using placeholder client.');
+    return createClient('https://placeholder.supabase.co', 'placeholder');
+  }
+};
+
+export const supabase = getSupabaseClient();
+
+const isPlaceholderClient = () => {
+  // @ts-ignore - Check internal URL property if available or infer from constant
+  return SUPABASE_URL === '' || SUPABASE_URL === 'undefined' || !SUPABASE_URL;
+};
 
 // Helper to get or create a unique device ID
 export const getDeviceId = (): string => {
   const STORAGE_KEY = 'tongai_device_id';
   let deviceId = localStorage.getItem(STORAGE_KEY);
   if (!deviceId) {
-    deviceId = crypto.randomUUID();
+    // Fallback for environments where crypto.randomUUID is not available (e.g. non-secure contexts)
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      try {
+        deviceId = crypto.randomUUID();
+      } catch (e) {
+        // Fallback if randomUUID fails execution
+        deviceId = 'dev-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      }
+    } else {
+      deviceId = 'dev-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    }
     localStorage.setItem(STORAGE_KEY, deviceId);
   }
   return deviceId;
@@ -19,6 +55,11 @@ export const getDeviceId = (): string => {
 
 // User Login: Verify key and log session via RPC
 export const loginUser = async (code: string): Promise<boolean> => {
+  if (isPlaceholderClient()) {
+    console.warn("Login bypassed (Placeholder Mode)");
+    return true; 
+  }
+
   const deviceId = getDeviceId();
   const userAgent = navigator.userAgent; // Get browser info
   
@@ -36,8 +77,30 @@ export const loginUser = async (code: string): Promise<boolean> => {
   return data as boolean;
 };
 
+// Verify and Link Image Key
+export const verifyImageKey = async (imageCode: string, mainCode: string): Promise<boolean> => {
+  if (isPlaceholderClient()) return true;
+
+  const deviceId = getDeviceId();
+
+  const { data, error } = await supabase.rpc('verify_image_key', {
+    input_image_code: imageCode,
+    input_main_code: mainCode,
+    input_device_id: deviceId
+  });
+
+  if (error) {
+    console.error('Image Key verification error:', error);
+    return false;
+  }
+
+  return data as boolean;
+};
+
 // Record Token Usage
 export const recordTokenUsage = async (code: string, tokens: number): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const deviceId = getDeviceId();
   await supabase.rpc('increment_token_usage', {
     input_code: code,
@@ -46,9 +109,20 @@ export const recordTokenUsage = async (code: string, tokens: number): Promise<vo
   });
 };
 
+// Record Image Usage
+export const recordImageUsage = async (imageCode: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  await supabase.rpc('increment_image_usage', {
+    input_image_code: imageCode
+  });
+};
+
 // --- History Sync Features ---
 
 export const fetchChatHistory = async (code: string): Promise<ChatHistoryItem[]> => {
+  if (isPlaceholderClient()) return [];
+
   const { data, error } = await supabase
     .from('chat_history')
     .select('*')
@@ -70,6 +144,8 @@ export const saveChatMessage = async (
   subject: string, 
   gradeLabel?: string
 ): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const deviceId = getDeviceId(); // Get current device ID
   
   const { error } = await supabase.rpc('add_chat_message', {
@@ -89,6 +165,8 @@ export const saveChatMessage = async (
 // --- System Configuration ---
 
 export const getAppTitle = async (): Promise<string> => {
+  if (isPlaceholderClient()) return 'TongAI';
+
   const { data } = await supabase
     .from('app_config')
     .select('value')
@@ -99,6 +177,8 @@ export const getAppTitle = async (): Promise<string> => {
 };
 
 export const updateAppTitle = async (newTitle: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   // Use RPC to bypass RLS issues for anon client
   const { error } = await supabase.rpc('update_config_value', {
     key_name: 'app_title',
@@ -110,6 +190,8 @@ export const updateAppTitle = async (newTitle: string): Promise<void> => {
 
 // New: Get AI Mode
 export const getAiMode = async (): Promise<AiMode> => {
+  if (isPlaceholderClient()) return 'solver';
+
   const { data } = await supabase
     .from('app_config')
     .select('value')
@@ -121,6 +203,8 @@ export const getAiMode = async (): Promise<AiMode> => {
 
 // New: Update AI Mode
 export const updateAiMode = async (mode: AiMode): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const { error } = await supabase.rpc('update_config_value', {
     key_name: 'ai_mode',
     new_value: mode
@@ -136,6 +220,8 @@ export const verifyAdminPassword = async (input: string): Promise<boolean> => {
   if (input === ADMIN_PASSWORD) {
     return true;
   }
+  
+  if (isPlaceholderClient()) return false;
 
   // 1. Try to check DB config
   try {
@@ -156,6 +242,8 @@ export const verifyAdminPassword = async (input: string): Promise<boolean> => {
 };
 
 export const updateAdminPassword = async (newPassword: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   // Use RPC to bypass RLS issues for anon client
   const { error } = await supabase.rpc('update_config_value', {
     key_name: 'admin_password',
@@ -170,32 +258,60 @@ export const updateAdminPassword = async (newPassword: string): Promise<void> =>
 
 // Admin: Fetch all keys with device counts
 export const fetchKeys = async (): Promise<AccessKey[]> => {
+  if (isPlaceholderClient()) {
+    console.warn("Returning mock keys (Placeholder Mode)");
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('access_keys')
     .select('*, device_sessions(count)')
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Fetch keys error:', error);
-    throw error;
+    console.error('Fetch keys error:', JSON.stringify(error, null, 2));
+    throw new Error(error.message);
   }
 
   return data || [];
 };
 
-// Admin: Fetch all devices
+// Admin: Fetch all IMAGE keys
+export const fetchImageKeys = async (): Promise<ImageAccessKey[]> => {
+  if (isPlaceholderClient()) return [];
+
+  const { data, error } = await supabase
+    .from('image_access_keys')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Fetch image keys error:', error);
+    throw new Error(error.message);
+  }
+  return data || [];
+};
+
+// Admin: Fetch devices (augmented with image key info)
 export const fetchDevices = async (): Promise<DeviceSession[]> => {
+  if (isPlaceholderClient()) return [];
+
   const { data, error } = await supabase
     .from('device_sessions')
     .select('*')
     .order('last_seen', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Fetch devices error:', JSON.stringify(error, null, 2));
+    throw new Error(error.message);
+  }
   return data || [];
 };
 
 // Admin: Fetch history logs filtered by key or device
 export const fetchAdminHistory = async (filterType: 'key' | 'device', value: string): Promise<ChatHistoryItem[]> => {
+  if (isPlaceholderClient()) return [];
+
   let query = supabase
     .from('chat_history')
     .select('*')
@@ -209,56 +325,114 @@ export const fetchAdminHistory = async (filterType: 'key' | 'device', value: str
   }
 
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data || [];
 };
 
 // Admin: Add new key
 export const addKey = async (code: string, note: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const { error } = await supabase
     .from('access_keys')
     .insert([{ code, note }]);
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+};
+
+// Admin: Add new IMAGE key
+export const addImageKey = async (code: string, note: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('image_access_keys')
+    .insert([{ code, note }]);
+  
+  if (error) throw new Error(error.message);
 };
 
 // Admin: Toggle key status
 export const toggleKeyStatus = async (id: string, currentStatus: boolean): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const { error } = await supabase
     .from('access_keys')
     .update({ is_active: !currentStatus })
     .eq('id', id);
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+};
+
+// Admin: Toggle IMAGE key status
+export const toggleImageKeyStatus = async (id: string, currentStatus: boolean): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('image_access_keys')
+    .update({ is_active: !currentStatus })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
 };
 
 // Admin: Update key limit
 export const updateKeyLimit = async (id: string, limit: number | null): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const { error } = await supabase
     .from('access_keys')
     .update({ token_limit: limit })
     .eq('id', id);
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 };
+
+// Admin: Update IMAGE key limit
+export const updateImageKeyLimit = async (id: string, limit: number | null): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('image_access_keys')
+    .update({ image_limit: limit })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+};
+
 
 // Admin: Toggle device ban status
 export const toggleDeviceBan = async (keyCode: string, deviceId: string, currentStatus: boolean): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   // Since device_sessions has a composite unique key (key_code, device_id), we use .match()
   const { error } = await supabase
     .from('device_sessions')
     .update({ is_banned: !currentStatus })
     .match({ key_code: keyCode, device_id: deviceId });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 };
 
 // Admin: Delete key
 export const deleteKey = async (code: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
   const { error } = await supabase
     .from('access_keys')
     .delete()
     .eq('code', code);
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+};
+
+// Admin: Delete IMAGE key
+export const deleteImageKey = async (code: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('image_access_keys')
+    .delete()
+    .eq('code', code);
+
+  if (error) throw new Error(error.message);
 };

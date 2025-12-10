@@ -4,19 +4,19 @@ import { Language } from '../types';
 export const translations = {
   'zh-cn': {
     // UI
-    loginTitle: '安全验证',
+    loginTitle: 'TongAI 安全访问',
     adminLoginTitle: 'TongAI 管理后台',
     loginSubtitle: '请输入访问密钥以继续',
     adminLoginSubtitle: '请输入管理员密码',
-    placeholderKey: '请输入密码',
+    placeholderKey: '请输入密钥 (例如: 1145)',
     placeholderAdmin: '请输入管理员密码',
     enterSystem: '进入系统',
     enterAdmin: '进入后台',
     verifying: '验证中...',
-    switchToAdmin: '管理员后台登录',
+    switchToAdmin: '管理员登录',
     switchToUser: '切换回用户登录',
     loginError: '登录请求失败，请检查网络',
-    invalidKey: '无效的/被禁用的密钥，或者余额不足',
+    invalidKey: '无效的访问密钥或密钥已被禁用',
     adminPasswordError: '管理员密码错误',
     
     // Header & App
@@ -33,7 +33,7 @@ export const translations = {
     placeholderMath: '请输入数学题目...',
     placeholderChinese: '请输入语文题目或文本...',
     placeholderEnglish: '请输入英语题目或文本...',
-    placeholderDefault: '请在此输入',
+    placeholderDefault: '请输入题目...',
     
     // Admin Dashboard
     adminTitle: 'TongAI 密钥管理',

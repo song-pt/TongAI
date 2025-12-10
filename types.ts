@@ -39,6 +39,16 @@ export interface AccessKey {
   device_sessions?: { count: number }[];
 }
 
+export interface ImageAccessKey {
+  id: string;
+  code: string;
+  note: string | null;
+  is_active: boolean;
+  created_at: string;
+  total_images: number;
+  image_limit: number | null;
+}
+
 export interface DeviceSession {
   id: string;
   key_code: string;
@@ -47,6 +57,7 @@ export interface DeviceSession {
   device_info: string;
   total_tokens: number;
   is_banned: boolean;
+  image_key_code?: string | null; // Linked image key
 }
 
 // History Type for Database

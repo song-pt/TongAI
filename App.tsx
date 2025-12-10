@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { solveMathProblem } from './services/api';
-import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode } from './services/supabase';
+import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea from './components/InputArea';
 import Header from './components/Header';
 import LockScreen from './components/LockScreen';
 import AdminDashboard from './components/AdminDashboard';
 import BackgroundEffects from './components/BackgroundEffects';
+import ImageAuthModal from './components/ImageAuthModal';
 import { BrainCircuit, BookOpen, PenTool, Languages } from 'lucide-react';
 import { Language, AiMode } from './types';
 import { translations } from './utils/translations';
@@ -34,6 +35,11 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('zh-cn');
   const [aiMode, setAiMode] = useState<AiMode>('solver');
   
+  // Image Auth State
+  const [isImageAuthenticated, setIsImageAuthenticated] = useState(false);
+  const [showImageAuthModal, setShowImageAuthModal] = useState(false);
+  const [imageKey, setImageKey] = useState<string>('');
+
   const t = translations[language];
 
   // Load Language Preference
@@ -109,19 +115,29 @@ const App: React.FC = () => {
     return map[grade] || undefined;
   };
 
-  const handleSolve = async (question: string, grade: string, subject: string) => {
+  const handleSolve = async (question: string, grade: string, subject: string, imageData?: string) => {
     setIsLoading(true);
-    setCurrentQuestion(question);
+    setCurrentQuestion(question || (imageData ? (language === 'en' ? 'Analyzing Image...' : '正在分析图片...') : ''));
     
     try {
       // Pass the userKey to record usage, current language, and current AI Mode
-      const answer = await solveMathProblem(question, grade, subject, userKey, language, aiMode);
+      // If imageData is present, also pass imageKey
+      const answer = await solveMathProblem(
+        question, 
+        grade, 
+        subject, 
+        userKey, 
+        language, 
+        aiMode, 
+        imageData, 
+        isImageAuthenticated ? imageKey : undefined
+      );
       
       const gradeLabel = getGradeLabel(grade);
       
       const newItem: SolutionItem = {
         id: Date.now().toString(), // Temporary ID until reload
-        question: question,
+        question: question || (imageData ? (language === 'en' ? '[Image Upload]' : '[图片上传]') : ''),
         gradeLabel: gradeLabel,
         subject: subject,
         answer: answer,
@@ -133,7 +149,8 @@ const App: React.FC = () => {
 
       // Save to Cloud if user is logged in
       if (userKey && !isAdmin) {
-        saveChatMessage(userKey, question, answer, subject, gradeLabel).catch(console.error);
+        const textToSave = question || (imageData ? '[Image]' : '');
+        saveChatMessage(userKey, textToSave, answer, subject, gradeLabel).catch(console.error);
       }
 
     } catch (err) {
@@ -150,6 +167,17 @@ const App: React.FC = () => {
       setIsLoading(false);
       setCurrentQuestion(null);
     }
+  };
+
+  const handleVerifyImageKey = async (code: string): Promise<boolean> => {
+    // Verify against DB, passing the main User Key to link them
+    const valid = await verifyImageKey(code, userKey);
+    if (valid) {
+      setIsImageAuthenticated(true);
+      setImageKey(code);
+      return true;
+    }
+    return false;
   };
 
   const getSubjectConfig = (subject: string) => {
@@ -192,6 +220,9 @@ const App: React.FC = () => {
           setIsAuthenticated(true);
           setIsAdmin(adminMode);
           if (code) setUserKey(code);
+          // Reset Image Auth on login
+          setIsImageAuthenticated(false);
+          setImageKey('');
         }} 
         language={language}
         onLanguageChange={handleLanguageChange}
@@ -239,6 +270,8 @@ const App: React.FC = () => {
               onSubjectChange={setCurrentSubject} 
               language={language}
               aiMode={aiMode}
+              isImageAuthenticated={isImageAuthenticated}
+              onRequestImageAuth={() => setShowImageAuthModal(true)}
             />
           </div>
         </div>
@@ -304,8 +337,13 @@ const App: React.FC = () => {
             );
           })}
         </div>
-
       </main>
+
+      <ImageAuthModal 
+        isOpen={showImageAuthModal} 
+        onClose={() => setShowImageAuthModal(false)} 
+        onVerify={handleVerifyImageKey}
+      />
     </div>
   );
 };
