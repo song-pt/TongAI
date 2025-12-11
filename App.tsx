@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { solveMathProblem } from './services/api';
-import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo } from './services/supabase';
+import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea, { getIconComponent } from './components/InputArea';
 import Header from './components/Header';
@@ -10,7 +10,7 @@ import AdminDashboard from './components/AdminDashboard';
 import BackgroundEffects from './components/BackgroundEffects';
 import ImageAuthModal from './components/ImageAuthModal';
 import { BrainCircuit, BookOpen, PenTool, Languages, Search, X } from 'lucide-react';
-import { Language, AiMode, Subject } from './types';
+import { Language, AiMode, Subject, KeyUsageData } from './types';
 import { translations } from './utils/translations';
 
 interface SolutionItem {
@@ -48,6 +48,10 @@ const App: React.FC = () => {
   const [showImageAuthModal, setShowImageAuthModal] = useState(false);
   const [imageKey, setImageKey] = useState<string>('');
 
+  // Usage Display State
+  const [showUsage, setShowUsage] = useState(false);
+  const [keyUsage, setKeyUsage] = useState<KeyUsageData | null>(null);
+
   const t = translations[language];
 
   // Load Language Preference
@@ -63,7 +67,7 @@ const App: React.FC = () => {
     localStorage.setItem('tongai_lang', lang);
   };
 
-  // Load Global Config (Title, Mode, Logo, Subjects)
+  // Load Global Config (Title, Mode, Logo, Subjects, Usage Setting)
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -79,6 +83,9 @@ const App: React.FC = () => {
         
         const subs = await fetchSubjects();
         setSubjects(subs);
+
+        const usageSetting = await getShowUsageToUser();
+        setShowUsage(usageSetting);
         
         // Ensure currentSubject is valid
         if (subs.length > 0 && !subs.find(s => s.code === currentSubject)) {
@@ -90,6 +97,13 @@ const App: React.FC = () => {
     };
     loadConfig();
   }, [isAuthenticated]); 
+
+  // Load Key Usage if enabled
+  useEffect(() => {
+    if (isAuthenticated && !isAdmin && userKey && showUsage) {
+       getKeyUsage(userKey).then(setKeyUsage).catch(console.error);
+    }
+  }, [isAuthenticated, isAdmin, userKey, showUsage]);
 
   // Load history from cloud when user logs in
   useEffect(() => {
@@ -185,6 +199,11 @@ const App: React.FC = () => {
       if (userKey && !isAdmin) {
         const textToSave = question || (imageData ? '[Image]' : '');
         saveChatMessage(userKey, textToSave, answer, subject, gradeLabel).catch(console.error);
+        
+        // Refresh usage if enabled
+        if (showUsage) {
+           setTimeout(() => getKeyUsage(userKey).then(setKeyUsage).catch(console.error), 1000);
+        }
       }
 
     } catch (err) {
@@ -370,6 +389,8 @@ const App: React.FC = () => {
               isImageAuthenticated={isImageAuthenticated}
               onRequestImageAuth={() => setShowImageAuthModal(true)}
               availableSubjects={subjects}
+              showUsage={showUsage}
+              keyUsage={keyUsage}
             />
           </div>
         </div>

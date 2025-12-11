@@ -22,33 +22,17 @@ const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({ subject, subjectC
 
   useEffect(() => {
     let chars: string[] = [];
-    let color = '';
+    let baseOpacity = 0.15;
+    let baseScale = 1.0;
 
     // Logic: If dynamic config exists, use it. Otherwise fallback to hardcoded (legacy support).
     if (subjectConfig) {
-      // 1. Get Color
-      // Map common names to rough hex values for the background particle style
-      const colorMap: Record<string, string> = {
-        'indigo': '#6366f1',
-        'emerald': '#10b981',
-        'violet': '#8b5cf6',
-        'rose': '#f43f5e',
-        'amber': '#f59e0b',
-        'sky': '#0ea5e9',
-        'blue': '#3b82f6',
-        'green': '#22c55e',
-        'purple': '#a855f7',
-        'red': '#ef4444',
-        'orange': '#f97316',
-        'cyan': '#06b6d4',
-      };
-      color = colorMap[subjectConfig.color] || '#6366f1';
+      // Get Opacity & Scale
+      baseOpacity = subjectConfig.char_opacity ?? 0.15;
+      baseScale = subjectConfig.char_size_scale ?? 1.0;
 
-      // 2. Get Characters
+      // Get Characters
       if (subjectConfig.background_chars) {
-        // Split strings but keep multi-character logic if possible? 
-        // For simplicity, we assume single characters or space separated? 
-        // The prompt says "12+-x". Let's simply split by character.
         chars = subjectConfig.background_chars.split('');
       } else {
         chars = ['?'];
@@ -58,15 +42,12 @@ const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({ subject, subjectC
       // Legacy Fallback
       if (subject === 'math') {
         chars = ['+', '-', '×', '÷', '=', '√', 'π', '∞', '∑', '∫', '≠', '≈', '∠', '⊥', '∆'];
-        color = '#6366f1'; 
       } else if (subject === 'chinese') {
         chars = ['天', '地', '人', '你', '我', '他'];
-        color = '#10b981'; 
       } else if (subject === 'english') {
         const upper = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
         const lower = Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i));
         chars = [...upper, ...lower];
-        color = '#8b5cf6'; 
       } else {
           chars = [];
       }
@@ -81,26 +62,31 @@ const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({ subject, subjectC
     const count = 40; 
 
     for (let i = 0; i < count; i++) {
+      // Random base scale between 0.8 and 2.3
+      const randomScale = 0.8 + Math.random() * 1.5;
+      // Multiply by the user configured scale
+      const finalScale = randomScale * baseScale;
+      
+      // Random base opacity between 0.03 and 0.08
+      const randomOpacity = 0.03 + Math.random() * 0.05;
+      // Adjust by user configuration (normalized around 0.15)
+      // If user sets 0.3, it's 2x stronger.
+      const opacityMultiplier = baseOpacity / 0.15;
+      const finalOpacity = Math.min(randomOpacity * opacityMultiplier, 1.0);
+
       newParticles.push({
         id: i,
         char: chars[Math.floor(Math.random() * chars.length)],
         x: Math.random() * 100,
         y: Math.random() * 100,
         rotation: Math.random() * 360,
-        scale: 0.8 + Math.random() * 1.5,
-        opacity: 0.03 + Math.random() * 0.05,
+        scale: finalScale,
+        opacity: finalOpacity,
       });
     }
 
     setParticles(newParticles);
   }, [subject, subjectConfig]);
-
-  // Determine font family based on subject (heuristic)
-  const getFontFamily = () => {
-    if (subject === 'math') return 'Times New Roman, serif';
-    if (subject === 'chinese' || (subjectConfig?.label.includes('文'))) return 'KaiTi, STKaiti, serif';
-    return 'serif';
-  };
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10 bg-gray-50/30 transition-colors duration-700">
@@ -113,13 +99,6 @@ const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({ subject, subjectC
             top: `${p.y}%`,
             transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
             opacity: p.opacity,
-            color: (subjectConfig?.color && ['indigo','emerald','violet'].includes(subjectConfig.color)) 
-              ? undefined // Let React inline style logic handle specific fallback? No, let's just use the style prop for color
-              : undefined, 
-            // We use style for color to support dynamic hex matching or class mapping?
-            // Actually, we calculated 'color' in useEffect but didn't put it in state. 
-            // Let's rely on CSS classes mapping or just use a generic logic.
-            // Simplified: Use the mapped color based on the config.
           }}
         >
           <span 

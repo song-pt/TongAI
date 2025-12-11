@@ -34,6 +34,18 @@ create table if not exists subjects (
   created_at timestamptz default now()
 );
 
+-- [NEW] 为学科表添加视觉配置列
+do $$
+begin
+    if not exists (select 1 from information_schema.columns where table_name = 'subjects' and column_name = 'char_opacity') then
+        alter table subjects add column char_opacity float default 0.15;
+    end if;
+    
+    if not exists (select 1 from information_schema.columns where table_name = 'subjects' and column_name = 'char_size_scale') then
+        alter table subjects add column char_size_scale float default 1.0;
+    end if;
+end $$;
+
 -- 2. 创建设备会话表（存储设备记录）
 create table if not exists device_sessions (
   id uuid default gen_random_uuid() primary key,
@@ -82,15 +94,18 @@ insert into app_config (key, value) values
 ('app_title', 'TongAI'),
 ('admin_password', '114514'),
 ('ai_mode', 'solver'),
-('app_logo', '') 
+('app_logo', ''),
+('ai_api_key', ''),
+('ai_base_url', ''),
+('show_usage_to_user', 'false')
 on conflict (key) do nothing;
 
 -- 插入默认学科数据
-insert into subjects (code, label, color, icon, prompt_prefix, background_chars, sort_order)
+insert into subjects (code, label, color, icon, prompt_prefix, background_chars, sort_order, char_opacity, char_size_scale)
 values
-('math', '数学', 'indigo', 'calculator', '请一步步思考，详细列出计算步骤，并反复验证，确保结果精确。使用与当前年级所学知识匹配的解法解题。要有理解题目，步骤拆解，验证过程，结论表述，最终答案。这五个步骤，如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', '+-×÷=√π∞∑∫≠≈∠⊥∆', 1),
-('chinese', '语文', 'emerald', 'pen', '请作为一位经验丰富的语文教育专家，针对我提供的文本或题目，进行全方位、深层次的解析。在文言文方面，请注重字词句翻译、文化背景与主旨的阐释；在阅读理解方面，请深入分析文章结构、修辞手法、表达技巧及文本主题的深刻内涵；在作文方面，请从审题立意、结构布局、论证思路或文学性等方面提供具体且可操作的指导建议和优化方向。请务必结合考点和学科核心素养，给出详尽、准确且富有启发性的专业解答。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', '天地人你我他', 2),
-('english', '英语', 'violet', 'languages', '请作为一位专业的英语语言学导师，全面分析我提供的英语文本或题目。在阅读理解方面，请重点剖析文章的主旨大意、段落逻辑关系、关键信息点及作者的隐含态度；在写作方面，请从主题表达、句式多样性、词汇准确性与高级运用、以及逻辑连贯性等方面，提供具体的优化建议和提升策略；在语法与词汇方面，请指出核心语法结构，并解释其在语境中的恰当用法。请确保您的解答准确、深入且具有实战指导意义。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz', 3)
+('math', '数学', 'indigo', 'calculator', '请一步步思考，详细列出计算步骤，并反复验证，确保结果精确。使用与当前年级所学知识匹配的解法解题。要有理解题目，步骤拆解，验证过程，结论表述，最终答案。这五个步骤，如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', '+-×÷=√π∞∑∫≠≈∠⊥∆', 1, 0.15, 1.0),
+('chinese', '语文', 'emerald', 'pen', '请作为一位经验丰富的语文教育专家，针对我提供的文本或题目，进行全方位、深层次的解析。在文言文方面，请注重字词句翻译、文化背景与主旨的阐释；在阅读理解方面，请深入分析文章结构、修辞手法、表达技巧及文本主题的深刻内涵；在作文方面，请从审题立意、结构布局、论证思路或文学性等方面提供具体且可操作的指导建议和优化方向。请务必结合考点和学科核心素养，给出详尽、准确且富有启发性的专业解答。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', '天地人你我他', 2, 0.12, 1.2),
+('english', '英语', 'violet', 'languages', '请作为一位专业的英语语言学导师，全面分析我提供的英语文本或题目。在阅读理解方面，请重点剖析文章的主旨大意、段落逻辑关系、关键信息点及作者的隐含态度；在写作方面，请从主题表达、句式多样性、词汇准确性与高级运用、以及逻辑连贯性等方面，提供具体的优化建议和提升策略；在语法与词汇方面，请指出核心语法结构，并解释其在语境中的恰当用法。请确保您的解答准确、深入且具有实战指导意义。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz', 3, 0.1, 1.5)
 on conflict (code) do nothing;
 
 -- 开启 RLS 策略
@@ -272,5 +287,25 @@ as $$
 begin
   insert into app_config (key, value) values (key_name, new_value)
   on conflict (key) do update set value = new_value;
+end;
+$$;
+
+-- 13. [NEW] 安全获取单个密钥用量函数
+create or replace function get_key_usage(input_code text)
+returns json
+language plpgsql
+security definer
+as $$
+declare
+  result json;
+begin
+  select json_build_object(
+    'total_tokens', total_tokens,
+    'token_limit', token_limit
+  ) into result
+  from access_keys
+  where code = input_code and is_active = true;
+  
+  return result;
 end;
 $$;

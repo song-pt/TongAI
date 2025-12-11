@@ -56,6 +56,8 @@ export interface Subject {
   icon: string; // 'calculator', 'pen', 'languages', 'atom', 'globe', 'music'
   prompt_prefix: string;
   background_chars: string;
+  char_opacity?: number; // 0.0 to 1.0, default 0.15
+  char_size_scale?: number; // default 1.0
   is_active: boolean;
   sort_order: number;
 }
@@ -88,6 +90,12 @@ export interface ChatHistoryItem {
 export interface AppConfig {
   key: string;
   value: string;
+}
+
+// New: Key Usage Data for User Display
+export interface KeyUsageData {
+  total_tokens: number;
+  token_limit: number | null;
 }
 
 // Language Type

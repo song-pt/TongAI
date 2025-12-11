@@ -1,9 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, Loader2, GraduationCap, BookOpenText, Image as ImageIcon, X, 
-  Calculator, PenTool, Languages, Atom, Globe, Music, Code, Palette, BookOpen } from 'lucide-react';
+  Calculator, PenTool, Languages, Atom, Globe, Music, Code, Palette, BookOpen, Infinity as InfinityIcon } from 'lucide-react';
 import { translations } from '../utils/translations';
-import { Language, AiMode, Subject } from '../types';
+import { Language, AiMode, Subject, KeyUsageData } from '../types';
 
 interface InputAreaProps {
   onSend: (message: string, grade: string, subject: string, imageData?: string) => void;
@@ -14,6 +14,8 @@ interface InputAreaProps {
   isImageAuthenticated: boolean;
   onRequestImageAuth: () => void;
   availableSubjects: Subject[];
+  showUsage?: boolean;
+  keyUsage?: KeyUsageData | null;
 }
 
 // Helper to map icon string to Component
@@ -40,7 +42,9 @@ const InputArea: React.FC<InputAreaProps> = ({
   aiMode = 'solver',
   isImageAuthenticated,
   onRequestImageAuth,
-  availableSubjects
+  availableSubjects,
+  showUsage,
+  keyUsage
 }) => {
   const [input, setInput] = useState('');
   const [grade, setGrade] = useState('');
@@ -173,6 +177,15 @@ const InputArea: React.FC<InputAreaProps> = ({
     if (sub.code === 'english') return t.placeholderEnglish;
     return `${t.placeholderDefault} (${sub.label})`;
   };
+
+  // Usage Progress Calculation
+  let usagePercent = 0;
+  let usageColor = 'bg-blue-500';
+  if (showUsage && keyUsage && keyUsage.token_limit) {
+    usagePercent = Math.min((keyUsage.total_tokens / keyUsage.token_limit) * 100, 100);
+    if (usagePercent > 90) usageColor = 'bg-red-500';
+    else if (usagePercent > 70) usageColor = 'bg-amber-500';
+  }
 
   return (
     <div className="w-full max-w-3xl mx-auto transition-all duration-300 ease-in-out">
@@ -310,6 +323,28 @@ const InputArea: React.FC<InputAreaProps> = ({
                 <X className="w-3 h-3" />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Usage Progress Bar */}
+        {showUsage && keyUsage && (
+          <div className="px-3 pb-1 border-t border-gray-100 pt-2 flex items-center gap-3">
+             <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${usageColor}`} 
+                  style={{ width: `${usagePercent}%` }}
+                ></div>
+             </div>
+             <div className="text-[10px] font-medium text-gray-500 whitespace-nowrap flex items-center gap-1">
+                <span>{language === 'en' ? 'Tokens:' : '额度:'}</span>
+                <span className="text-gray-900">{keyUsage.total_tokens}</span>
+                <span>/</span>
+                {keyUsage.token_limit === null ? (
+                   <InfinityIcon className="w-3 h-3 text-gray-400" />
+                ) : (
+                   <span>{keyUsage.token_limit}</span>
+                )}
+             </div>
           </div>
         )}
       </form>

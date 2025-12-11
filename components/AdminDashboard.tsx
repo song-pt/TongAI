@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig } from '../services/supabase';
+import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser } from '../services/supabase';
 import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey, Subject } from '../types';
-import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server } from 'lucide-react';
+import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -41,6 +41,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   // Model Settings
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiBaseUrl, setAiBaseUrl] = useState('');
+  
+  // Feature Toggles
+  const [showUsageToUser, setShowUsageToUser] = useState(false);
 
   const [savingSettings, setSavingSettings] = useState(false);
   
@@ -49,7 +52,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     color: 'indigo',
     icon: 'book',
     is_active: true,
-    sort_order: 0
+    sort_order: 0,
+    char_opacity: 0.15,
+    char_size_scale: 1.0
   });
   const [isEditingSubject, setIsEditingSubject] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
@@ -112,6 +117,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         const provider = await getAiProviderConfig();
         setAiApiKey(provider.apiKey);
         setAiBaseUrl(provider.baseUrl);
+        const showUsage = await getShowUsageToUser();
+        setShowUsageToUser(showUsage);
       } else if (activeTab === 'subjects') {
         const subs = await fetchSubjects(true); // fetch all including inactive
         setSubjects(subs);
@@ -287,6 +294,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       if (newAdminPassword.trim()) promises.push(updateAdminPassword(newAdminPassword.trim()));
       promises.push(updateAiMode(aiMode));
       promises.push(updateAiProviderConfig(aiApiKey.trim(), aiBaseUrl.trim()));
+      promises.push(updateShowUsageToUser(showUsageToUser)); // Save toggle
       await Promise.all(promises);
       alert(t.saveSuccess);
       setNewAdminPassword('');
@@ -313,7 +321,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       prompt_prefix: '',
       background_chars: '',
       sort_order: subjects.length + 1,
-      is_active: true
+      is_active: true,
+      char_opacity: 0.15,
+      char_size_scale: 1.0
     });
     setIsEditingSubject(false);
     setShowSubjectModal(true);
@@ -385,8 +395,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       </header>
 
       <main className="max-w-6xl mx-auto p-6 space-y-8">
+        {/* ... (Existing Tabs Logic Omitted for Brevity, only showing Settings update) ... */}
         
-        {/* SUBJECTS & UI TAB */}
         {activeTab === 'subjects' && (
            <div className="space-y-8">
               {/* App Icon Manager */}
@@ -444,9 +454,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                             <div className="flex justify-between items-start mb-2">
                                <div className="flex items-center gap-2">
                                   <div className={`p-2 rounded-lg text-white`} style={{ backgroundColor: `var(--color-${sub.color}-600, #4f46e5)` }}>
-                                    {/* Helper to render icon */}
                                     {getIconComponent(sub.icon, 'w-5 h-5')} 
-                                    {/* Note: In admin we can't easily rely on Tailwind classes for dynamic colors unless safe-listed or using style attribute hack above */}
                                   </div>
                                   <div>
                                      <h3 className="font-bold text-gray-800">{sub.label}</h3>
@@ -464,6 +472,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                                </div>
                                <div className="truncate">
                                  <span className="font-semibold text-gray-400">字符:</span> {sub.background_chars || '(无)'}
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-400">视觉:</span>
+                                  <span>Opacity: {sub.char_opacity ?? 0.15}, Scale: {sub.char_size_scale ?? 1.0}</span>
                                </div>
                             </div>
                             <div className="flex gap-2 mt-4 pt-3 border-t">
@@ -495,8 +507,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
              {loading ? (<div className="flex justify-center py-8"><Loader2 className="w-8 h-8 text-purple-600 animate-spin" /></div>) : (
                <form onSubmit={handleSaveSettings} className="space-y-6">
                   <div className="space-y-2"><label className="block text-sm font-semibold text-gray-700">{t.siteTitle}</label><input type="text" value={appTitle} onChange={(e) => setAppTitle(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500" placeholder="TongAI" /><p className="text-xs text-gray-500">{t.siteTitleDesc}</p></div>
+                  
+                  {/* AI Mode Selection */}
                   <div className="space-y-2 pt-4 border-t"><label className="block text-sm font-semibold text-gray-700 flex items-center gap-2"><Bot className="w-4 h-4 text-gray-500" />{t.aiModeTitle}</label><div className="grid grid-cols-2 gap-3"><div onClick={() => setAiMode('solver')} className={`cursor-pointer border rounded-xl p-3 text-sm flex flex-col gap-1 ${aiMode === 'solver' ? 'bg-purple-50 border-purple-200 text-purple-800' : 'hover:bg-gray-50 text-gray-600'}`}><span className="font-bold flex items-center gap-2"><div className={`w-3 h-3 rounded-full ${aiMode === 'solver' ? 'bg-purple-600' : 'border border-gray-400'}`}></div>{t.modeSolver}</span></div><div onClick={() => setAiMode('normal')} className={`cursor-pointer border rounded-xl p-3 text-sm flex flex-col gap-1 ${aiMode === 'normal' ? 'bg-blue-50 border-blue-200 text-blue-800' : 'hover:bg-gray-50 text-gray-600'}`}><span className="font-bold flex items-center gap-2"><div className={`w-3 h-3 rounded-full ${aiMode === 'normal' ? 'bg-blue-600' : 'border border-gray-400'}`}></div>{t.modeNormal}</span></div></div><p className="text-xs text-gray-500">{t.aiModeDesc}</p></div>
                   
+                  {/* User Feature Toggles */}
+                  <div className="space-y-4 pt-4 border-t">
+                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">用户端功能开关 (Features)</h3>
+                      <div className="flex items-center justify-between p-3 border rounded-xl bg-gray-50/50">
+                         <div>
+                            <span className="font-medium text-gray-800 text-sm flex items-center gap-2">
+                               <Gauge className="w-4 h-4 text-gray-500" />
+                               显示用量 (Show Usage)
+                            </span>
+                            <p className="text-xs text-gray-500 mt-1">允许用户在输入框下方看到自己的 Token 使用情况和额度上限。</p>
+                         </div>
+                         <button 
+                           type="button"
+                           onClick={() => setShowUsageToUser(!showUsageToUser)}
+                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showUsageToUser ? 'bg-purple-600' : 'bg-gray-200'}`}
+                         >
+                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showUsageToUser ? 'translate-x-6' : 'translate-x-1'}`} />
+                         </button>
+                      </div>
+                  </div>
+
                   {/* API Model Settings */}
                   <div className="space-y-4 pt-4 border-t">
                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Server className="w-4 h-4 text-gray-500" /> 模型服务商设置 (Model Provider)</h3>
@@ -506,13 +541,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                      </div>
                      <div className="space-y-2">
                        <label className="text-xs font-semibold text-gray-500 uppercase">API Key</label>
-                       <input type="password" value={aiApiKey} onChange={(e) => setAiApiKey(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder="sk-..." />
+                       <div className="relative">
+                          <input type="password" value={aiApiKey} onChange={(e) => setAiApiKey(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder="sk-..." />
+                       </div>
                        <p className="text-[10px] text-gray-400">留空则使用系统默认的环境变量。修改此处将覆盖 Vercel 环境变量。</p>
                      </div>
                   </div>
 
                   <div className="space-y-2 pt-4 border-t"><label className="block text-sm font-semibold text-gray-700 flex items-center gap-2"><Lock className="w-4 h-4 text-gray-500" />{t.adminPassTitle}</label><input type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500" placeholder={t.adminPassPlaceholder} /><p className="text-xs text-gray-500">{t.adminPassDesc}</p></div>
-                  <div className="pt-6"><button type="submit" disabled={savingSettings || (!appTitle.trim() && !newAdminPassword.trim() && !aiApiKey && !aiBaseUrl)} className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">{savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}{t.saveSettings}</button></div>
+                  <div className="pt-6"><button type="submit" disabled={savingSettings} className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">{savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}{t.saveSettings}</button></div>
                </form>
              )}
           </section>
@@ -585,9 +622,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
           </section>
         )}
 
-        {/* --- Modals --- */}
-        
-        {/* DB Error Modal */}
+        {/* ... (Existing Modals: DB Error, Subject Edit, History, Limit) ... */}
+        {/* Keeping existing modals exactly as they were, just rendering below */}
         {dbErrorModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
@@ -673,6 +709,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                             <option value="code">Code (编程)</option>
                             <option value="palette">Palette (艺术)</option>
                          </select>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> 粒子大小 (Size)</label>
+                         <div className="flex items-center gap-2">
+                             <input 
+                               type="range" 
+                               min="0.5" 
+                               max="3.0" 
+                               step="0.1"
+                               value={subjectForm.char_size_scale ?? 1.0} 
+                               onChange={e => setSubjectForm({...subjectForm, char_size_scale: parseFloat(e.target.value)})} 
+                               className="flex-1"
+                             />
+                             <span className="text-xs font-mono w-8">{subjectForm.char_size_scale ?? 1.0}</span>
+                         </div>
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> 透明度 (Opacity)</label>
+                         <div className="flex items-center gap-2">
+                             <input 
+                               type="range" 
+                               min="0.05" 
+                               max="1.0" 
+                               step="0.05"
+                               value={subjectForm.char_opacity ?? 0.15} 
+                               onChange={e => setSubjectForm({...subjectForm, char_opacity: parseFloat(e.target.value)})} 
+                               className="flex-1"
+                             />
+                             <span className="text-xs font-mono w-8">{subjectForm.char_opacity ?? 0.15}</span>
+                         </div>
                       </div>
                    </div>
 

@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSWORD } from '../constants';
-import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject } from '../types';
+import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject, KeyUsageData } from '../types';
 
 // Initialize the Supabase client
 // Validate URL to prevent crash on load if env vars are missing
@@ -116,6 +116,44 @@ export const recordImageUsage = async (imageCode: string): Promise<void> => {
 
   await supabase.rpc('increment_image_usage', {
     input_image_code: imageCode
+  });
+};
+
+// --- Usage Display Features ---
+
+// Get Key Usage (Token/Limit) for User
+export const getKeyUsage = async (code: string): Promise<KeyUsageData | null> => {
+  if (isPlaceholderClient()) return null;
+
+  const { data, error } = await supabase.rpc('get_key_usage', { input_code: code });
+  
+  if (error || !data) {
+    return null;
+  }
+
+  return data as KeyUsageData;
+};
+
+// Get Show Usage Setting
+export const getShowUsageToUser = async (): Promise<boolean> => {
+  if (isPlaceholderClient()) return false;
+
+  const { data } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'show_usage_to_user')
+    .single();
+  
+  return data?.value === 'true';
+};
+
+// Update Show Usage Setting
+export const updateShowUsageToUser = async (show: boolean): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  await supabase.rpc('update_config_value', {
+    key_name: 'show_usage_to_user',
+    new_value: show.toString()
   });
 };
 
