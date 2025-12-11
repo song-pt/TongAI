@@ -97,6 +97,8 @@ insert into app_config (key, value) values
 ('app_logo', ''),
 ('ai_api_key', ''),
 ('ai_base_url', ''),
+('ai_text_model', ''),
+('ai_vision_model', ''),
 ('show_usage_to_user', 'false')
 on conflict (key) do nothing;
 

@@ -275,26 +275,31 @@ export const updateAiMode = async (mode: AiMode): Promise<void> => {
 };
 
 // New: Get AI Provider Config
-export const getAiProviderConfig = async (): Promise<{apiKey: string, baseUrl: string}> => {
-  if (isPlaceholderClient()) return { apiKey: '', baseUrl: '' };
+export const getAiProviderConfig = async (): Promise<{apiKey: string, baseUrl: string, textModel: string, visionModel: string}> => {
+  if (isPlaceholderClient()) return { apiKey: '', baseUrl: '', textModel: '', visionModel: '' };
   
-  const { data } = await supabase.from('app_config').select('key, value').in('key', ['ai_api_key', 'ai_base_url']);
+  const { data } = await supabase.from('app_config').select('key, value').in('key', ['ai_api_key', 'ai_base_url', 'ai_text_model', 'ai_vision_model']);
   
-  const config = { apiKey: '', baseUrl: '' };
+  const config = { apiKey: '', baseUrl: '', textModel: '', visionModel: '' };
   if (data) {
     data.forEach(item => {
       if (item.key === 'ai_api_key') config.apiKey = item.value;
       if (item.key === 'ai_base_url') config.baseUrl = item.value;
+      if (item.key === 'ai_text_model') config.textModel = item.value;
+      if (item.key === 'ai_vision_model') config.visionModel = item.value;
     });
   }
   return config;
 };
 
-export const updateAiProviderConfig = async (apiKey: string, baseUrl: string): Promise<void> => {
+export const updateAiProviderConfig = async (apiKey: string, baseUrl: string, textModel: string, visionModel: string): Promise<void> => {
   if (isPlaceholderClient()) return;
 
-  if (apiKey) await updateConfigValue('ai_api_key', apiKey);
-  if (baseUrl) await updateConfigValue('ai_base_url', baseUrl);
+  // We explicitly update each one, skipping if undefined, but admin might send empty string to clear it.
+  if (apiKey !== undefined) await updateConfigValue('ai_api_key', apiKey);
+  if (baseUrl !== undefined) await updateConfigValue('ai_base_url', baseUrl);
+  if (textModel !== undefined) await updateConfigValue('ai_text_model', textModel);
+  if (visionModel !== undefined) await updateConfigValue('ai_vision_model', visionModel);
 };
 
 // Helper for config updates

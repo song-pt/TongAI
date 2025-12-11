@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { Subject } from '../types';
 
@@ -62,17 +63,16 @@ const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({ subject, subjectC
     const count = 40; 
 
     for (let i = 0; i < count; i++) {
-      // Random base scale between 0.8 and 2.3
-      const randomScale = 0.8 + Math.random() * 1.5;
+      // Random base scale variation
+      const randomScaleVariation = 0.8 + Math.random() * 1.5;
       // Multiply by the user configured scale
-      const finalScale = randomScale * baseScale;
+      const finalScale = randomScaleVariation * baseScale;
       
-      // Random base opacity between 0.03 and 0.08
-      const randomOpacity = 0.03 + Math.random() * 0.05;
-      // Adjust by user configuration (normalized around 0.15)
-      // If user sets 0.3, it's 2x stronger.
+      // Random base opacity variation
+      const randomOpacityVariation = 0.03 + Math.random() * 0.05;
+      // Adjust by user configuration (normalized around 0.15 base)
       const opacityMultiplier = baseOpacity / 0.15;
-      const finalOpacity = Math.min(randomOpacity * opacityMultiplier, 1.0);
+      const finalOpacity = Math.min(randomOpacityVariation * opacityMultiplier, 1.0);
 
       newParticles.push({
         id: i,

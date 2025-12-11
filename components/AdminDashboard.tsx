@@ -1,8 +1,9 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser } from '../services/supabase';
 import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey, Subject } from '../types';
-import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -41,6 +42,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   // Model Settings
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiBaseUrl, setAiBaseUrl] = useState('');
+  const [aiTextModel, setAiTextModel] = useState('');
+  const [aiVisionModel, setAiVisionModel] = useState('');
   
   // Feature Toggles
   const [showUsageToUser, setShowUsageToUser] = useState(false);
@@ -117,6 +120,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         const provider = await getAiProviderConfig();
         setAiApiKey(provider.apiKey);
         setAiBaseUrl(provider.baseUrl);
+        setAiTextModel(provider.textModel);
+        setAiVisionModel(provider.visionModel);
         const showUsage = await getShowUsageToUser();
         setShowUsageToUser(showUsage);
       } else if (activeTab === 'subjects') {
@@ -293,7 +298,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       if (appTitle.trim()) promises.push(updateAppTitle(appTitle.trim()));
       if (newAdminPassword.trim()) promises.push(updateAdminPassword(newAdminPassword.trim()));
       promises.push(updateAiMode(aiMode));
-      promises.push(updateAiProviderConfig(aiApiKey.trim(), aiBaseUrl.trim()));
+      promises.push(updateAiProviderConfig(aiApiKey.trim(), aiBaseUrl.trim(), aiTextModel.trim(), aiVisionModel.trim()));
       promises.push(updateShowUsageToUser(showUsageToUser)); // Save toggle
       await Promise.all(promises);
       alert(t.saveSuccess);
@@ -335,14 +340,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     setIsSubmitting(true);
     try {
       if (isEditingSubject) {
-        await updateSubject(subjectForm.code!, subjectForm);
+        // Prepare updates: Remove 'code' and 'created_at' to avoid PK conflicts or readonly errors
+        // Create a copy of the object
+        const updates = { ...subjectForm };
+        // Remove the primary key and system fields from the payload
+        delete (updates as any).code;
+        delete (updates as any).created_at;
+
+        await updateSubject(subjectForm.code!, updates);
       } else {
         await addSubject(subjectForm as Subject);
       }
       setShowSubjectModal(false);
       loadData();
-    } catch (e) {
-      alert('保存失败，可能 ID 重复');
+    } catch (e: any) {
+      console.error(e);
+      alert(`保存失败: ${e.message || '可能 ID 重复或数据格式错误'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -535,10 +548,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                   {/* API Model Settings */}
                   <div className="space-y-4 pt-4 border-t">
                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Server className="w-4 h-4 text-gray-500" /> 模型服务商设置 (Model Provider)</h3>
+                     
                      <div className="space-y-2">
                        <label className="text-xs font-semibold text-gray-500 uppercase">API Base URL</label>
                        <input type="text" value={aiBaseUrl} onChange={(e) => setAiBaseUrl(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder="https://api.siliconflow.cn/v1" />
                      </div>
+                     
                      <div className="space-y-2">
                        <label className="text-xs font-semibold text-gray-500 uppercase">API Key</label>
                        <div className="relative">
@@ -546,6 +561,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                        </div>
                        <p className="text-[10px] text-gray-400">留空则使用系统默认的环境变量。修改此处将覆盖 Vercel 环境变量。</p>
                      </div>
+
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Cpu className="w-3 h-3" /> 文字对话模型 (Text)</label>
+                          <input 
+                             type="text" 
+                             value={aiTextModel} 
+                             onChange={(e) => setAiTextModel(e.target.value)} 
+                             className="w-full px-3 py-2 border rounded-lg text-sm font-mono bg-gray-50 focus:bg-white transition-colors" 
+                             placeholder="deepseek-ai/DeepSeek-V3" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><ImageIcon className="w-3 h-3" /> 识图模型 (Vision)</label>
+                          <input 
+                             type="text" 
+                             value={aiVisionModel} 
+                             onChange={(e) => setAiVisionModel(e.target.value)} 
+                             className="w-full px-3 py-2 border rounded-lg text-sm font-mono bg-gray-50 focus:bg-white transition-colors" 
+                             placeholder="Qwen/Qwen3-VL-30B-A3B-Instruct" 
+                          />
+                        </div>
+                     </div>
+                     <p className="text-[10px] text-gray-400">设置用于处理纯文本问题和带图片问题的不同模型。若留空则使用默认配置。</p>
                   </div>
 
                   <div className="space-y-2 pt-4 border-t"><label className="block text-sm font-semibold text-gray-700 flex items-center gap-2"><Lock className="w-4 h-4 text-gray-500" />{t.adminPassTitle}</label><input type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500" placeholder={t.adminPassPlaceholder} /><p className="text-xs text-gray-500">{t.adminPassDesc}</p></div>

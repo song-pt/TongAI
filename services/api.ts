@@ -2,7 +2,7 @@
 import { SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, AI_MODEL, AI_VISION_MODEL, SYSTEM_PROMPT } from '../constants';
 import { prompts } from '../utils/translations';
 import { ApiResponse, ApiError, Language, AiMode } from '../types';
-import { recordTokenUsage, recordImageUsage } from './supabase';
+import { recordTokenUsage, recordImageUsage, getAiProviderConfig } from './supabase';
 
 export const solveMathProblem = async (
   problem: string, 
@@ -15,15 +15,25 @@ export const solveMathProblem = async (
   imageKey?: string,   // Image access key code
   customPromptPrefix?: string // NEW: Optional custom prefix from dynamic subject config
 ): Promise<string> => {
-  const url = `${SILICONFLOW_BASE_URL}/chat/completions`;
+  
+  // 1. Fetch Dynamic Configuration
+  const providerConfig = await getAiProviderConfig();
+  
+  // 2. Resolve API Config (DB Priority > Constant Fallback)
+  const baseUrl = providerConfig.baseUrl || SILICONFLOW_BASE_URL;
+  const apiKey = providerConfig.apiKey || SILICONFLOW_API_KEY;
+  const textModel = providerConfig.textModel || AI_MODEL;
+  const visionModel = providerConfig.visionModel || AI_VISION_MODEL;
+
+  const url = `${baseUrl}/chat/completions`;
   
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${SILICONFLOW_API_KEY}`
+    'Authorization': `Bearer ${apiKey}`
   };
 
   // Determine Model: Switch to Vision model if image is present
-  const modelToUse = imageData ? AI_VISION_MODEL : AI_MODEL;
+  const modelToUse = imageData ? visionModel : textModel;
 
   let promptContent = '';
 
