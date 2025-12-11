@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { solveMathProblem } from './services/api';
-import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage } from './services/supabase';
+import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea, { getIconComponent } from './components/InputArea';
 import Header from './components/Header';
@@ -10,7 +11,7 @@ import AdminDashboard from './components/AdminDashboard';
 import BackgroundEffects from './components/BackgroundEffects';
 import ImageAuthModal from './components/ImageAuthModal';
 import { BrainCircuit, BookOpen, PenTool, Languages, Search, X } from 'lucide-react';
-import { Language, AiMode, Subject, KeyUsageData } from './types';
+import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData } from './types';
 import { translations } from './utils/translations';
 
 interface SolutionItem {
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   // Usage Display State
   const [showUsage, setShowUsage] = useState(false);
   const [keyUsage, setKeyUsage] = useState<KeyUsageData | null>(null);
+  const [imageKeyUsage, setImageKeyUsage] = useState<ImageKeyUsageData | null>(null);
 
   const t = translations[language];
 
@@ -104,6 +106,13 @@ const App: React.FC = () => {
        getKeyUsage(userKey).then(setKeyUsage).catch(console.error);
     }
   }, [isAuthenticated, isAdmin, userKey, showUsage]);
+
+  // Load Image Key Usage if enabled
+  useEffect(() => {
+    if (isAuthenticated && !isAdmin && isImageAuthenticated && imageKey && showUsage) {
+       getImageKeyUsage(imageKey).then(setImageKeyUsage).catch(console.error);
+    }
+  }, [isAuthenticated, isAdmin, isImageAuthenticated, imageKey, showUsage]);
 
   // Load history from cloud when user logs in
   useEffect(() => {
@@ -203,6 +212,10 @@ const App: React.FC = () => {
         // Refresh usage if enabled
         if (showUsage) {
            setTimeout(() => getKeyUsage(userKey).then(setKeyUsage).catch(console.error), 1000);
+           // Refresh Image Usage if applicable
+           if (isImageAuthenticated && imageKey) {
+             setTimeout(() => getImageKeyUsage(imageKey).then(setImageKeyUsage).catch(console.error), 1000);
+           }
         }
       }
 
@@ -391,6 +404,7 @@ const App: React.FC = () => {
               availableSubjects={subjects}
               showUsage={showUsage}
               keyUsage={keyUsage}
+              imageKeyUsage={imageKeyUsage}
             />
           </div>
         </div>

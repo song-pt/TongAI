@@ -1,7 +1,8 @@
 
+
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSWORD } from '../constants';
-import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject, KeyUsageData } from '../types';
+import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject, KeyUsageData, ImageKeyUsageData } from '../types';
 
 // Initialize the Supabase client
 // Validate URL to prevent crash on load if env vars are missing
@@ -35,21 +36,33 @@ const isPlaceholderClient = () => {
 // Helper to get or create a unique device ID
 export const getDeviceId = (): string => {
   const STORAGE_KEY = 'tongai_device_id';
-  let deviceId = localStorage.getItem(STORAGE_KEY);
+  // 1. Try to read from cookie
+  const cookieMatch = document.cookie.match(new RegExp('(^| )' + STORAGE_KEY + '=([^;]+)'));
+  let deviceId = cookieMatch ? cookieMatch[2] : null;
+
+  // 2. If cookie missing, try LocalStorage
   if (!deviceId) {
-    // Fallback for environments where crypto.randomUUID is not available (e.g. non-secure contexts)
+    deviceId = localStorage.getItem(STORAGE_KEY);
+  }
+
+  // 3. If both missing, generate new
+  if (!deviceId) {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       try {
         deviceId = crypto.randomUUID();
       } catch (e) {
-        // Fallback if randomUUID fails execution
         deviceId = 'dev-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       }
     } else {
       deviceId = 'dev-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
     }
-    localStorage.setItem(STORAGE_KEY, deviceId);
   }
+
+  // 4. Always sync back to both storages to ensure persistence
+  localStorage.setItem(STORAGE_KEY, deviceId);
+  // Cookie with long expiration (1 year)
+  document.cookie = `${STORAGE_KEY}=${deviceId}; path=/; max-age=31536000; SameSite=Strict`;
+
   return deviceId;
 };
 
@@ -132,6 +145,19 @@ export const getKeyUsage = async (code: string): Promise<KeyUsageData | null> =>
   }
 
   return data as KeyUsageData;
+};
+
+// Get Image Key Usage for User
+export const getImageKeyUsage = async (code: string): Promise<ImageKeyUsageData | null> => {
+  if (isPlaceholderClient()) return null;
+
+  const { data, error } = await supabase.rpc('get_image_key_usage', { input_code: code });
+  
+  if (error || !data) {
+    return null;
+  }
+
+  return data as ImageKeyUsageData;
 };
 
 // Get Show Usage Setting

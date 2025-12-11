@@ -99,6 +99,11 @@ export interface KeyUsageData {
   token_limit: number | null;
 }
 
+export interface ImageKeyUsageData {
+  total_images: number;
+  image_limit: number | null;
+}
+
 // Language Type
 export type Language = 'zh-cn' | 'zh-tw' | 'en';
 

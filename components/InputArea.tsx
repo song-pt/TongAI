@@ -1,9 +1,10 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, Loader2, GraduationCap, BookOpenText, Image as ImageIcon, X, 
   Calculator, PenTool, Languages, Atom, Globe, Music, Code, Palette, BookOpen, Infinity as InfinityIcon } from 'lucide-react';
 import { translations } from '../utils/translations';
-import { Language, AiMode, Subject, KeyUsageData } from '../types';
+import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData } from '../types';
 
 interface InputAreaProps {
   onSend: (message: string, grade: string, subject: string, imageData?: string) => void;
@@ -16,6 +17,7 @@ interface InputAreaProps {
   availableSubjects: Subject[];
   showUsage?: boolean;
   keyUsage?: KeyUsageData | null;
+  imageKeyUsage?: ImageKeyUsageData | null;
 }
 
 // Helper to map icon string to Component
@@ -44,7 +46,8 @@ const InputArea: React.FC<InputAreaProps> = ({
   onRequestImageAuth,
   availableSubjects,
   showUsage,
-  keyUsage
+  keyUsage,
+  imageKeyUsage
 }) => {
   const [input, setInput] = useState('');
   const [grade, setGrade] = useState('');
@@ -178,13 +181,22 @@ const InputArea: React.FC<InputAreaProps> = ({
     return `${t.placeholderDefault} (${sub.label})`;
   };
 
-  // Usage Progress Calculation
+  // Usage Progress Calculation (Main Key)
   let usagePercent = 0;
   let usageColor = 'bg-blue-500';
   if (showUsage && keyUsage && keyUsage.token_limit) {
     usagePercent = Math.min((keyUsage.total_tokens / keyUsage.token_limit) * 100, 100);
     if (usagePercent > 90) usageColor = 'bg-red-500';
     else if (usagePercent > 70) usageColor = 'bg-amber-500';
+  }
+
+  // Image Usage Percentage
+  let imgPercent = 0;
+  let imgColor = 'bg-pink-500';
+  if (showUsage && imageKeyUsage && imageKeyUsage.image_limit) {
+    imgPercent = Math.min((imageKeyUsage.total_images / imageKeyUsage.image_limit) * 100, 100);
+    if (imgPercent > 90) imgColor = 'bg-red-500';
+    else if (imgPercent > 70) imgColor = 'bg-amber-500';
   }
 
   return (
@@ -278,19 +290,37 @@ const InputArea: React.FC<InputAreaProps> = ({
               onChange={handleFileChange}
             />
 
-            {/* Image Upload Button */}
-            <button
-              type="button"
-              onClick={handleImageClick}
-              disabled={isLoading}
-              className={`
-                flex-shrink-0 flex items-center justify-center w-10 h-10 mb-2 rounded-xl transition-all duration-200
-                ${isLoading ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 hover:text-indigo-600'}
-              `}
-              title="上传图片"
-            >
-              <ImageIcon className="w-5 h-5" />
-            </button>
+            {/* Image Upload Button & Usage Wrapper */}
+            <div className="flex flex-col items-center justify-end mb-2">
+              {showUsage && isImageAuthenticated && imageKeyUsage && (
+                  <div className="mb-1 flex flex-col items-center animate-in fade-in slide-in-from-bottom-1 duration-300">
+                      <span className="text-[9px] text-gray-400 font-mono leading-none mb-0.5">
+                          {imageKeyUsage.total_images}/{imageKeyUsage.image_limit ?? <InfinityIcon className="w-2.5 h-2.5 inline align-middle"/>}
+                      </span>
+                      {imageKeyUsage.image_limit && (
+                          <div className="w-8 h-1 bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${imgColor}`} 
+                                style={{ width: `${imgPercent}%` }}
+                              ></div>
+                          </div>
+                      )}
+                  </div>
+              )}
+              
+              <button
+                type="button"
+                onClick={handleImageClick}
+                disabled={isLoading}
+                className={`
+                  flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200
+                  ${isLoading ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 hover:text-indigo-600'}
+                `}
+                title="上传图片"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+            </div>
 
             <button
               type="submit"
@@ -326,7 +356,7 @@ const InputArea: React.FC<InputAreaProps> = ({
           </div>
         )}
 
-        {/* Usage Progress Bar */}
+        {/* Main Token Usage Progress Bar (Bottom) */}
         {showUsage && keyUsage && (
           <div className="px-3 pb-1 border-t border-gray-100 pt-2 flex items-center gap-3">
              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">

@@ -311,3 +311,23 @@ begin
   return result;
 end;
 $$;
+
+-- 14. [NEW] 安全获取图片密钥用量函数
+create or replace function get_image_key_usage(input_code text)
+returns json
+language plpgsql
+security definer
+as $$
+declare
+  result json;
+begin
+  select json_build_object(
+    'total_images', total_images,
+    'image_limit', image_limit
+  ) into result
+  from image_access_keys
+  where code = input_code and is_active = true;
+  
+  return result;
+end;
+$$;
