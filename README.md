@@ -1,7 +1,7 @@
 
-###TongAI is a full-stack AI platform. It integrates large models for multi-disciplinary (math/language/English) tutoring and provides a complete backend management system. It also offers convenient key distribution, usage management, and automatic circuit breaker functionality. I'm just a student, and I welcome any questions you may have to help me improve! Thank you!
+### TongAI is a full-stack AI platform. It integrates large models for multi-disciplinary (math/language/English) tutoring and provides a complete backend management system. It also offers convenient key distribution, usage management, and automatic circuit breaker functionality. I'm just a student, and I welcome any questions you may have to help me improve! Thank you!
 
-##If you need to switch models, please go to line 22 of the constants.ts file.
+## If you need to switch models, please go to line 22 of the constants.ts file.
 
 # Deploying Tong AI
 
