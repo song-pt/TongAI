@@ -199,6 +199,65 @@ const InputArea: React.FC<InputAreaProps> = ({
     else if (imgPercent > 70) imgColor = 'bg-amber-500';
   }
 
+  // Render Selectors Helper
+  const renderSelectors = (isMobileView: boolean) => (
+    <div className={isMobileView ? "flex gap-2 mb-2 px-1" : "flex-shrink-0 mb-2 ml-2 flex gap-2 flex-wrap sm:flex-nowrap"}>
+        {/* Subject Selector */}
+        <div className={`relative group ${isMobileView ? 'flex-1' : ''}`}>
+            <div className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 ${getSubjectIconColor(subject)} pointer-events-none flex items-center justify-center`}>
+                {getIconComponent(availableSubjects.find(s => s.code === subject)?.icon || 'book', 'w-4 h-4')}
+            </div>
+            <select
+            value={subject}
+            onChange={(e) => {
+                const val = e.target.value;
+                setSubject(val);
+                onSubjectChange?.(val);
+            }}
+            disabled={isLoading}
+            className={`
+                appearance-none pl-9 pr-8 py-2 border rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer
+                ${isMobileView ? 'w-full' : ''}
+                ${getSubjectStyles(subject)}
+            `}
+            >
+            {availableSubjects.map((s) => (
+                <option key={s.code} value={s.code}>
+                {s.label}
+                </option>
+            ))}
+            </select>
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+        </div>
+
+        {/* Grade Selector */}
+        <div className={`relative group ${isMobileView ? 'flex-1' : ''}`}>
+            <GraduationCap className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 ${grade ? 'text-indigo-600' : 'text-gray-400'} pointer-events-none`} />
+            <select
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+            disabled={isLoading}
+            className={`
+                appearance-none pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer
+                ${isMobileView ? 'w-full' : ''}
+                ${grade ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-gray-600 hover:bg-gray-100'}
+            `}
+            >
+            {grades.map((g) => (
+                <option key={g.value} value={g.value}>
+                {g.label}
+                </option>
+            ))}
+            </select>
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+        </div>
+    </div>
+  );
+
   return (
     <div className="w-full max-w-3xl mx-auto transition-all duration-300 ease-in-out">
       <form 
@@ -208,61 +267,17 @@ const InputArea: React.FC<InputAreaProps> = ({
           ${isLoading ? 'border-gray-200 shadow-sm' : 'border-gray-300 shadow-lg hover:shadow-xl hover:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-100 focus-within:border-indigo-500'}
         `}
       >
+        {/* Mobile View: Selectors Top */}
+        {isSolverMode && (
+           <div className="sm:hidden">
+              {renderSelectors(true)}
+           </div>
+        )}
+
         <div className="flex items-end gap-2">
             {isSolverMode && (
-              <div className="flex-shrink-0 mb-2 ml-2 flex gap-2 flex-wrap sm:flex-nowrap">
-                {/* Subject Selector */}
-                <div className="relative group">
-                  <div className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 ${getSubjectIconColor(subject)} pointer-events-none flex items-center justify-center`}>
-                     {/* Try to find icon */}
-                     {getIconComponent(availableSubjects.find(s => s.code === subject)?.icon || 'book', 'w-4 h-4')}
-                  </div>
-                  <select
-                    value={subject}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSubject(val);
-                      onSubjectChange?.(val);
-                    }}
-                    disabled={isLoading}
-                    className={`
-                      appearance-none pl-9 pr-8 py-2 border rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer
-                      ${getSubjectStyles(subject)}
-                    `}
-                  >
-                    {availableSubjects.map((s) => (
-                      <option key={s.code} value={s.code}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
-                </div>
-
-                {/* Grade Selector */}
-                <div className="relative group">
-                  <GraduationCap className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 ${grade ? 'text-indigo-600' : 'text-gray-400'} pointer-events-none`} />
-                  <select
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    disabled={isLoading}
-                    className={`
-                      appearance-none pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer
-                      ${grade ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-gray-600 hover:bg-gray-100'}
-                    `}
-                  >
-                    {grades.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
-                </div>
+              <div className="hidden sm:block">
+                 {renderSelectors(false)}
               </div>
             )}
 
@@ -276,7 +291,7 @@ const InputArea: React.FC<InputAreaProps> = ({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={getPlaceholder(subject)}
-              className="w-full min-h-[56px] max-h-[200px] py-4 px-2 bg-transparent border-none focus:ring-0 resize-none outline-none text-gray-800 placeholder-gray-400 text-lg leading-relaxed"
+              className="flex-1 w-full min-h-[56px] max-h-[200px] py-4 px-2 bg-transparent border-none focus:ring-0 resize-none outline-none text-gray-800 placeholder-gray-400 text-lg leading-relaxed"
               rows={1}
               disabled={isLoading}
             />
