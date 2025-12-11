@@ -54,7 +54,7 @@ export const getDeviceId = (): string => {
 };
 
 // User Login: Verify key and log session via RPC
-export const loginUser = async (code: string): Promise<boolean> => {
+export const loginUser = async (code: string, location?: string): Promise<boolean> => {
   if (isPlaceholderClient()) {
     console.warn("Login bypassed (Placeholder Mode)");
     return true; 
@@ -66,7 +66,8 @@ export const loginUser = async (code: string): Promise<boolean> => {
   const { data, error } = await supabase.rpc('login_with_key', {
     input_code: code,
     input_device_id: deviceId,
-    input_user_agent: userAgent
+    input_user_agent: userAgent,
+    input_location: location || 'Unknown' // Pass location
   });
 
   if (error) {
@@ -234,6 +235,35 @@ export const updateAiMode = async (mode: AiMode): Promise<void> => {
 
   if (error) throw error;
 };
+
+// New: Get AI Provider Config
+export const getAiProviderConfig = async (): Promise<{apiKey: string, baseUrl: string}> => {
+  if (isPlaceholderClient()) return { apiKey: '', baseUrl: '' };
+  
+  const { data } = await supabase.from('app_config').select('key, value').in('key', ['ai_api_key', 'ai_base_url']);
+  
+  const config = { apiKey: '', baseUrl: '' };
+  if (data) {
+    data.forEach(item => {
+      if (item.key === 'ai_api_key') config.apiKey = item.value;
+      if (item.key === 'ai_base_url') config.baseUrl = item.value;
+    });
+  }
+  return config;
+};
+
+export const updateAiProviderConfig = async (apiKey: string, baseUrl: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  if (apiKey) await updateConfigValue('ai_api_key', apiKey);
+  if (baseUrl) await updateConfigValue('ai_base_url', baseUrl);
+};
+
+// Helper for config updates
+const updateConfigValue = async (key: string, value: string) => {
+  await supabase.rpc('update_config_value', { key_name: key, new_value: value });
+};
+
 
 // Admin Password Management
 export const verifyAdminPassword = async (input: string): Promise<boolean> => {

@@ -52,6 +52,11 @@ begin
     if not exists (select 1 from information_schema.columns where table_name = 'device_sessions' and column_name = 'image_key_code') then
         alter table device_sessions add column image_key_code text references image_access_keys(code) on delete set null;
     end if;
+    
+    -- [NEW] 添加 location 列
+    if not exists (select 1 from information_schema.columns where table_name = 'device_sessions' and column_name = 'location') then
+        alter table device_sessions add column location text default 'Unknown';
+    end if;
 end $$;
 
 -- 3. 创建聊天历史表
@@ -105,11 +110,15 @@ create policy "Allow public read access subjects" on subjects for select using (
 drop policy if exists "Allow all access subjects" on subjects;
 create policy "Allow all access subjects" on subjects for all using (true) with check (true);
 
--- 5. 创建登录函数
+-- 5. [UPDATED] 创建登录函数 (支持位置信息)
+-- 先尝试删除旧函数以避免签名冲突
+drop function if exists login_with_key(text, text, text);
+
 create or replace function login_with_key(
   input_code text, 
   input_device_id text,
-  input_user_agent text
+  input_user_agent text,
+  input_location text default 'Unknown'
 )
 returns boolean
 language plpgsql
@@ -130,10 +139,10 @@ begin
     return false;
   end if;
 
-  insert into device_sessions (key_code, device_id, last_seen, device_info, is_banned)
-  values (found_key, input_device_id, now(), input_user_agent, false)
+  insert into device_sessions (key_code, device_id, last_seen, device_info, is_banned, location)
+  values (found_key, input_device_id, now(), input_user_agent, false, input_location)
   on conflict (key_code, device_id) do update
-  set last_seen = now(), device_info = input_user_agent;
+  set last_seen = now(), device_info = input_user_agent, location = coalesce(input_location, device_sessions.location);
 
   return true;
 end;

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldCheck, User } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck, User, MapPin } from 'lucide-react';
 import { loginUser, verifyAdminPassword } from '../services/supabase';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -12,8 +12,17 @@ interface LockScreenProps {
   onLanguageChange: (lang: Language) => void;
 }
 
+const provinces = [
+  '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江', 
+  '上海', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', 
+  '湖北', '湖南', '广东', '广西', '海南', '重庆', '四川', '贵州', 
+  '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆', '香港', 
+  '澳门', '台湾', '海外/Other'
+];
+
 const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, language, onLanguageChange }) => {
   const [password, setPassword] = useState('');
+  const [location, setLocation] = useState(provinces[0]); // Default to Beijing
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -36,8 +45,8 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, language, onLanguageC
           setError(t.adminPasswordError);
         }
       } else {
-        // Database User Check
-        const success = await loginUser(password.trim());
+        // Database User Check with Location
+        const success = await loginUser(password.trim(), location);
         if (success) {
           onUnlock(false, password.trim()); // Pass the code back
         } else {
@@ -72,6 +81,26 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, language, onLanguageC
           </div>
 
           <form onSubmit={handleSubmit} className="w-full space-y-4">
+            {!isAdminMode && (
+              <div className="relative">
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                   <MapPin className="w-5 h-5" />
+                 </div>
+                 <select 
+                   value={location}
+                   onChange={(e) => setLocation(e.target.value)}
+                   className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 focus:border-indigo-500 focus:bg-white outline-none appearance-none cursor-pointer font-medium"
+                 >
+                   {provinces.map(p => (
+                     <option key={p} value={p}>{p}</option>
+                   ))}
+                 </select>
+                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                 </div>
+              </div>
+            )}
+
             <div>
               <input
                 type={isAdminMode ? "password" : "text"}

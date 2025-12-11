@@ -69,6 +69,7 @@ export interface DeviceSession {
   total_tokens: number;
   is_banned: boolean;
   image_key_code?: string | null; // Linked image key
+  location?: string; // New: User selected location
 }
 
 // History Type for Database
