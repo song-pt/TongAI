@@ -49,6 +49,17 @@ export interface ImageAccessKey {
   image_limit: number | null;
 }
 
+export interface Subject {
+  code: string;
+  label: string;
+  color: string; // 'indigo', 'emerald', 'violet', 'rose', 'amber', 'sky'
+  icon: string; // 'calculator', 'pen', 'languages', 'atom', 'globe', 'music'
+  prompt_prefix: string;
+  background_chars: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export interface DeviceSession {
   id: string;
   key_code: string;

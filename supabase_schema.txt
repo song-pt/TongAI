@@ -21,6 +21,19 @@ create table if not exists image_access_keys (
   image_limit bigint default null
 );
 
+-- 12. [NEW] 创建学科配置表
+create table if not exists subjects (
+  code text primary key,
+  label text not null,
+  color text not null default 'indigo',
+  icon text not null default 'book',
+  prompt_prefix text,
+  background_chars text,
+  sort_order int default 0,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
+
 -- 2. 创建设备会话表（存储设备记录）
 create table if not exists device_sessions (
   id uuid default gen_random_uuid() primary key,
@@ -59,22 +72,38 @@ create table if not exists app_config (
   value text not null
 );
 
--- 插入默认配置 (包含 admin_password 和 ai_mode)
+-- 插入默认配置
 insert into app_config (key, value) values 
 ('app_title', 'TongAI'),
 ('admin_password', '114514'),
-('ai_mode', 'solver')
+('ai_mode', 'solver'),
+('app_logo', '') 
 on conflict (key) do nothing;
+
+-- 插入默认学科数据
+insert into subjects (code, label, color, icon, prompt_prefix, background_chars, sort_order)
+values
+('math', '数学', 'indigo', 'calculator', '请一步步思考，详细列出计算步骤，并反复验证，确保结果精确。使用与当前年级所学知识匹配的解法解题。要有理解题目，步骤拆解，验证过程，结论表述，最终答案。这五个步骤，如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', '+-×÷=√π∞∑∫≠≈∠⊥∆', 1),
+('chinese', '语文', 'emerald', 'pen', '请作为一位经验丰富的语文教育专家，针对我提供的文本或题目，进行全方位、深层次的解析。在文言文方面，请注重字词句翻译、文化背景与主旨的阐释；在阅读理解方面，请深入分析文章结构、修辞手法、表达技巧及文本主题的深刻内涵；在作文方面，请从审题立意、结构布局、论证思路或文学性等方面提供具体且可操作的指导建议和优化方向。请务必结合考点和学科核心素养，给出详尽、准确且富有启发性的专业解答。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', '天地人你我他', 2),
+('english', '英语', 'violet', 'languages', '请作为一位专业的英语语言学导师，全面分析我提供的英语文本或题目。在阅读理解方面，请重点剖析文章的主旨大意、段落逻辑关系、关键信息点及作者的隐含态度；在写作方面，请从主题表达、句式多样性、词汇准确性与高级运用、以及逻辑连贯性等方面，提供具体的优化建议和提升策略；在语法与词汇方面，请指出核心语法结构，并解释其在语境中的恰当用法。请确保您的解答准确、深入且具有实战指导意义。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz', 3)
+on conflict (code) do nothing;
 
 -- 开启 RLS 策略
 alter table app_config enable row level security;
+alter table subjects enable row level security;
 
--- [FIX] 安全创建策略：先删除旧策略，再创建新策略，防止 Error 42710
+-- [FIX] 安全创建策略
 drop policy if exists "Allow public read access" on app_config;
 create policy "Allow public read access" on app_config for select using (true);
 
 drop policy if exists "Allow all access for authenticated/service role" on app_config;
 create policy "Allow all access for authenticated/service role" on app_config for all using (true) with check (true);
+
+drop policy if exists "Allow public read access subjects" on subjects;
+create policy "Allow public read access subjects" on subjects for select using (true);
+
+drop policy if exists "Allow all access subjects" on subjects;
+create policy "Allow all access subjects" on subjects for all using (true) with check (true);
 
 -- 5. 创建登录函数
 create or replace function login_with_key(

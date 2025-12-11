@@ -24,6 +24,8 @@ export const translations = {
     welcomeDesc: '选择学科与年级，输入题目，立刻获得详细的专家解析',
     expertAnalysis: '专家解析',
     loading: '正在思考解题步骤...',
+    searchPlaceholder: '搜索历史记录 (关键词/时间)...',
+    noSearchResults: '未找到匹配的历史记录',
     
     // Input Area
     subjectMath: '数学',
@@ -106,6 +108,8 @@ export const translations = {
     welcomeDesc: '選擇學科與年級，輸入題目，立刻獲得詳細的專家解析',
     expertAnalysis: '專家解析',
     loading: '正在思考解題步驟...',
+    searchPlaceholder: '搜索歷史記錄 (關鍵詞/時間)...',
+    noSearchResults: '未找到匹配的歷史記錄',
     
     // Input Area
     subjectMath: '數學',
@@ -188,6 +192,8 @@ export const translations = {
     welcomeDesc: 'Select subject and grade, enter your problem, and get expert solutions instantly.',
     expertAnalysis: 'Expert Analysis',
     loading: 'Thinking about the solution...',
+    searchPlaceholder: 'Search history (keyword/time)...',
+    noSearchResults: 'No matching history found',
     
     // Input Area
     subjectMath: 'Math',

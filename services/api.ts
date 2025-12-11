@@ -12,7 +12,8 @@ export const solveMathProblem = async (
   language: Language = 'zh-cn',
   aiMode: AiMode = 'solver',
   imageData?: string, // Base64 string of image
-  imageKey?: string   // Image access key code
+  imageKey?: string,   // Image access key code
+  customPromptPrefix?: string // NEW: Optional custom prefix from dynamic subject config
 ): Promise<string> => {
   const url = `${SILICONFLOW_BASE_URL}/chat/completions`;
   
@@ -31,13 +32,20 @@ export const solveMathProblem = async (
     promptContent = problem;
   } else {
     // Solver Mode: Use Persona and Grade Logic
-    const promptSet = prompts[language];
-    let prefix = promptSet.userPrefix;
     
-    if (subject === 'chinese') {
-      prefix = promptSet.chinesePrefix;
-    } else if (subject === 'english') {
-      prefix = promptSet.englishPrefix;
+    // Priority: Custom Prefix (from DB) > Built-in defaults
+    let prefix = customPromptPrefix;
+
+    if (!prefix) {
+       // Fallback to hardcoded prompts if no custom prefix provided
+       const promptSet = prompts[language];
+       prefix = promptSet.userPrefix; // Default Math
+       
+       if (subject === 'chinese') {
+         prefix = promptSet.chinesePrefix;
+       } else if (subject === 'english') {
+         prefix = promptSet.englishPrefix;
+       }
     }
 
     promptContent = `${prefix}${problem}`;

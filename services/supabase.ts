@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSWORD } from '../constants';
-import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey } from '../types';
+import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject } from '../types';
 
 // Initialize the Supabase client
 // Validate URL to prevent crash on load if env vars are missing
@@ -179,12 +179,34 @@ export const getAppTitle = async (): Promise<string> => {
 export const updateAppTitle = async (newTitle: string): Promise<void> => {
   if (isPlaceholderClient()) return;
 
-  // Use RPC to bypass RLS issues for anon client
   const { error } = await supabase.rpc('update_config_value', {
     key_name: 'app_title',
     new_value: newTitle
   });
     
+  if (error) throw error;
+};
+
+export const getAppLogo = async (): Promise<string> => {
+  if (isPlaceholderClient()) return '';
+  
+  const { data } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'app_logo')
+    .single();
+    
+  return data?.value || '';
+};
+
+export const updateAppLogo = async (base64: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+  
+  const { error } = await supabase.rpc('update_config_value', {
+    key_name: 'app_logo',
+    new_value: base64
+  });
+  
   if (error) throw error;
 };
 
@@ -216,7 +238,6 @@ export const updateAiMode = async (mode: AiMode): Promise<void> => {
 // Admin Password Management
 export const verifyAdminPassword = async (input: string): Promise<boolean> => {
   // 0. Master Override: Check Environment Variable/Constant FIRST
-  // This ensures that if the user sets VITE_ADMIN_PASSWORD, it always works regardless of DB state.
   if (input === ADMIN_PASSWORD) {
     return true;
   }
@@ -244,7 +265,6 @@ export const verifyAdminPassword = async (input: string): Promise<boolean> => {
 export const updateAdminPassword = async (newPassword: string): Promise<void> => {
   if (isPlaceholderClient()) return;
 
-  // Use RPC to bypass RLS issues for anon client
   const { error } = await supabase.rpc('update_config_value', {
     key_name: 'admin_password',
     new_value: newPassword
@@ -253,6 +273,60 @@ export const updateAdminPassword = async (newPassword: string): Promise<void> =>
   if (error) throw error;
 };
 
+// --- Subjects Management ---
+
+export const fetchSubjects = async (includeInactive = false): Promise<Subject[]> => {
+  if (isPlaceholderClient()) return [];
+
+  let query = supabase
+    .from('subjects')
+    .select('*')
+    .order('sort_order', { ascending: true });
+    
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching subjects:', error);
+    return [];
+  }
+  return data || [];
+};
+
+export const addSubject = async (subject: Subject): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('subjects')
+    .insert([subject]);
+
+  if (error) throw new Error(error.message);
+};
+
+export const updateSubject = async (code: string, updates: Partial<Subject>): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('subjects')
+    .update(updates)
+    .eq('code', code);
+
+  if (error) throw new Error(error.message);
+};
+
+export const deleteSubject = async (code: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+  
+  const { error } = await supabase
+    .from('subjects')
+    .delete()
+    .eq('code', code);
+    
+  if (error) throw new Error(error.message);
+};
 
 // --- Admin Features ---
 
@@ -316,7 +390,7 @@ export const fetchAdminHistory = async (filterType: 'key' | 'device', value: str
     .from('chat_history')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(100); // Limit to last 100 items for performance
+    .limit(100); 
 
   if (filterType === 'key') {
     query = query.eq('key_code', value);
@@ -404,7 +478,6 @@ export const updateImageKeyLimit = async (id: string, limit: number | null): Pro
 export const toggleDeviceBan = async (keyCode: string, deviceId: string, currentStatus: boolean): Promise<void> => {
   if (isPlaceholderClient()) return;
 
-  // Since device_sessions has a composite unique key (key_code, device_id), we use .match()
   const { error } = await supabase
     .from('device_sessions')
     .update({ is_banned: !currentStatus })
