@@ -35,19 +35,25 @@ export const translations = {
     subjectMath: '数学',
     subjectChinese: '语文',
     subjectEnglish: '英语',
-    gradeUnlimited: '不限等级', // Changed from Grade to Level (等级)
+    gradeUnlimited: '不限等级',
     placeholderMath: '请输入数学题目...',
     placeholderChinese: '请输入语文题目或文本...',
     placeholderEnglish: '请输入英语题目或文本...',
     placeholderDefault: '请输入题目...',
     
     // Admin Dashboard
-    adminTitle: 'TongAI 密钥管理',
+    adminTitle: '管理员菜单', // Updated
     tabKeys: '密钥列表',
     tabDevices: '设备监控',
     tabSettings: '系统设置',
+    // New Admin Tabs
+    tabImageKeys: '图片密钥',
+    tabSubjects: '学科与UI',
+    tabLevels: '等级管理',
+
     logout: '退出',
     addKeyTitle: '分发新密钥',
+    addImageKeyTitle: '分发新图片密钥',
     addKeyBtn: '添加',
     refresh: '刷新列表',
     noKeys: '暂无密钥数据',
@@ -73,13 +79,82 @@ export const translations = {
     saveSuccess: '设置已保存，部分设置刷新页面后生效',
     saveFail: '保存失败',
     
+    // Admin: Icon Section
+    appIconTitle: '网站图标设置 (App Icon)',
+    uploadIcon: '上传新图标',
+    iconHint: '建议尺寸 64x64 或 128x128，支持 PNG/JPG/SVG，小于 500KB',
+    noIcon: '无图标',
+
+    // Admin: Subjects Section
+    subjectsTitle: '学科配置与提示词 (Subjects & Prompts)',
+    addSubject: '添加学科',
+    editSubject: '编辑学科',
+    newSubject: '添加新学科',
+    saveSubject: '保存学科配置',
+    enableSubject: '启用该学科',
+    
+    // Admin: Subject Fields
+    lblCode: 'Code (ID)',
+    lblLabel: '显示名称',
+    lblColor: '主题色 (Tailwind)',
+    lblIcon: '图标',
+    lblSize: '粒子大小 (Size)',
+    lblOpacity: '透明度 (Opacity)',
+    lblPrompt: '前置提示词 (Prompt Prefix)',
+    lblBgChars: '背景字符 (Background Chars)',
+    lblBgCharsHint: '这些字符将随机飘浮在背景中',
+    promptPlaceholder: '将会发送给 AI 作为该学科的 System Prompt...',
+
+    // Admin: Levels Section
+    levelsTitle: '等级管理 (Levels Management)',
+    addLevel: '添加等级',
+    editLevel: '编辑等级',
+    newLevel: '添加新等级',
+    saveLevel: '保存',
+    enableLevel: '启用该等级',
+    lblSort: '排序权重 (Sort Order)',
+
+    // Admin: Settings Section Features
+    userFeaturesTitle: '用户端功能开关 (Features)',
+    showUsageTitle: '显示用量 (Show Usage)',
+    showUsageDesc: '允许用户在输入框下方看到自己的 Token 使用情况和额度上限。',
+    contextLimitTitle: '追问上下文长度 (Context Limit)',
+    contextLimitDesc: '设置用户在“追问”模式下，AI 能记住的历史对话数量。',
+    modelProviderTitle: '模型服务商设置 (Model Provider)',
+    modelProviderDesc: '设置用于处理纯文本问题和带图片问题的不同模型。若留空则使用默认配置。',
+    textModel: '文字对话模型 (Text)',
+    visionModel: '识图模型 (Vision)',
+    
+    // Admin: Common
+    edit: '编辑',
+    color: '颜色',
+    chars: '字符',
+    visuals: '视觉',
+    linkedDevices: '已关联设备',
+    none: '无',
+    
+    // Admin: Limit Modal
+    limitTitleMain: '设置 Token 限额',
+    limitTitleImage: '设置图片数量限额',
+    limitDescMain: '正在为主密钥',
+    limitDescImage: '正在为图片密钥',
+    limitDescSuffix: '设置限额。',
+    currentUsage: '当前用量',
+    unlimited: '无限制 (Unlimited)',
+    limitInputMain: 'Token 上限数值',
+    limitInputImage: '图片数量上限',
+    limitHint: '当用量达到此数值时，该密钥将被自动禁用。',
+    cancel: '取消',
+    save: '保存设置',
+    saving: '保存中...',
+
     // AI Mode
     aiModeTitle: 'AI 运行模式',
     aiModeDesc: '切换系统是作为专用的做题助手（强制学科/年级提示词）还是通用 AI 对话机器人。',
     modeSolver: '做题助手模式 (Solver Mode)',
     modeNormal: '通用 AI 模式 (Normal Mode)',
     
-    // Legacy Grades (Kept for fallback, but dynamic levels prefer DB label)
+    // Legacy Grades (Kept for fallback)
     grade1: '一年级',
     grade2: '二年级',
     grade3: '三年级',
@@ -130,12 +205,18 @@ export const translations = {
     placeholderDefault: '請輸入題目...',
     
     // Admin Dashboard
-    adminTitle: 'TongAI 密鑰管理',
+    adminTitle: '管理員菜單',
     tabKeys: '密鑰列表',
     tabDevices: '設備監控',
     tabSettings: '系統設置',
+    // New Admin Tabs
+    tabImageKeys: '圖片密鑰',
+    tabSubjects: '學科與UI',
+    tabLevels: '等級管理',
+
     logout: '退出',
     addKeyTitle: '分發新密鑰',
+    addImageKeyTitle: '分發新圖片密鑰',
     addKeyBtn: '添加',
     refresh: '刷新列表',
     noKeys: '暫無密鑰數據',
@@ -160,6 +241,75 @@ export const translations = {
     saveSettings: '保存設置',
     saveSuccess: '設置已保存，部分設置刷新頁面後生效',
     saveFail: '保存失敗',
+
+    // Admin: Icon Section
+    appIconTitle: '網站圖標設置 (App Icon)',
+    uploadIcon: '上傳新圖標',
+    iconHint: '建議尺寸 64x64 或 128x128，支持 PNG/JPG/SVG，小於 500KB',
+    noIcon: '無圖標',
+
+    // Admin: Subjects Section
+    subjectsTitle: '學科配置與提示詞 (Subjects & Prompts)',
+    addSubject: '添加學科',
+    editSubject: '編輯學科',
+    newSubject: '添加新學科',
+    saveSubject: '保存學科配置',
+    enableSubject: '啟用該學科',
+    
+    // Admin: Subject Fields
+    lblCode: 'Code (ID)',
+    lblLabel: '顯示名稱',
+    lblColor: '主題色 (Tailwind)',
+    lblIcon: '圖標',
+    lblSize: '粒子大小 (Size)',
+    lblOpacity: '透明度 (Opacity)',
+    lblPrompt: '前置提示詞 (Prompt Prefix)',
+    lblBgChars: '背景字符 (Background Chars)',
+    lblBgCharsHint: '這些字符將隨機飄浮在背景中',
+    promptPlaceholder: '將會發送給 AI 作為該學科的 System Prompt...',
+
+    // Admin: Levels Section
+    levelsTitle: '等級管理 (Levels Management)',
+    addLevel: '添加等級',
+    editLevel: '編輯等級',
+    newLevel: '添加新等級',
+    saveLevel: '保存',
+    enableLevel: '啟用該等級',
+    lblSort: '排序權重 (Sort Order)',
+
+    // Admin: Settings Section Features
+    userFeaturesTitle: '用戶端功能開關 (Features)',
+    showUsageTitle: '顯示用量 (Show Usage)',
+    showUsageDesc: '允許用戶在輸入框下方看到自己的 Token 使用情況和額度上限。',
+    contextLimitTitle: '追問上下文長度 (Context Limit)',
+    contextLimitDesc: '設置用戶在「追問」模式下，AI 能記住的歷史對話數量。',
+    modelProviderTitle: '模型服務商設置 (Model Provider)',
+    modelProviderDesc: '設置用於處理純文本問題和帶圖片問題的不同模型。若留空則使用默認配置。',
+    textModel: '文字對話模型 (Text)',
+    visionModel: '識圖模型 (Vision)',
+    
+    // Admin: Common
+    edit: '編輯',
+    color: '顏色',
+    chars: '字符',
+    visuals: '視覺',
+    linkedDevices: '已關聯設備',
+    none: '無',
+    
+    // Admin: Limit Modal
+    limitTitleMain: '設置 Token 限額',
+    limitTitleImage: '設置圖片數量限額',
+    limitDescMain: '正在為主密鑰',
+    limitDescImage: '正在為圖片密鑰',
+    limitDescSuffix: '設置限額。',
+    currentUsage: '當前用量',
+    unlimited: '無限制 (Unlimited)',
+    limitInputMain: 'Token 上限數值',
+    limitInputImage: '圖片數量上限',
+    limitHint: '當用量達到此數值時，該密鑰將被自動禁用。',
+    cancel: '取消',
+    save: '保存設置',
+    saving: '保存中...',
 
     // AI Mode
     aiModeTitle: 'AI 運行模式',
@@ -218,12 +368,18 @@ export const translations = {
     placeholderDefault: 'Enter problem...',
     
     // Admin Dashboard
-    adminTitle: 'TongAI Key Management',
+    adminTitle: 'Admin Menu',
     tabKeys: 'Keys',
     tabDevices: 'Devices',
     tabSettings: 'Settings',
+    // New Admin Tabs
+    tabImageKeys: 'Image Keys',
+    tabSubjects: 'Subjects & UI',
+    tabLevels: 'Levels',
+
     logout: 'Logout',
     addKeyTitle: 'Distribute New Key',
+    addImageKeyTitle: 'Distribute New Image Key',
     addKeyBtn: 'Add',
     refresh: 'Refresh',
     noKeys: 'No key data available',
@@ -248,6 +404,75 @@ export const translations = {
     saveSettings: 'Save Settings',
     saveSuccess: 'Settings saved. Refresh to see changes.',
     saveFail: 'Failed to save settings',
+
+    // Admin: Icon Section
+    appIconTitle: 'App Icon Settings',
+    uploadIcon: 'Upload Icon',
+    iconHint: 'Recommended 64x64 or 128x128, PNG/JPG/SVG, < 500KB',
+    noIcon: 'No Icon',
+
+    // Admin: Subjects Section
+    subjectsTitle: 'Subjects & Prompts',
+    addSubject: 'Add Subject',
+    editSubject: 'Edit Subject',
+    newSubject: 'New Subject',
+    saveSubject: 'Save Subject',
+    enableSubject: 'Enable Subject',
+    
+    // Admin: Subject Fields
+    lblCode: 'Code (ID)',
+    lblLabel: 'Label',
+    lblColor: 'Theme Color',
+    lblIcon: 'Icon',
+    lblSize: 'Particle Size',
+    lblOpacity: 'Opacity',
+    lblPrompt: 'Prompt Prefix',
+    lblBgChars: 'Background Chars',
+    lblBgCharsHint: 'Characters floating in background',
+    promptPlaceholder: 'System prompt prefix for AI...',
+
+    // Admin: Levels Section
+    levelsTitle: 'Levels Management',
+    addLevel: 'Add Level',
+    editLevel: 'Edit Level',
+    newLevel: 'New Level',
+    saveLevel: 'Save',
+    enableLevel: 'Enable Level',
+    lblSort: 'Sort Order',
+
+    // Admin: Settings Section Features
+    userFeaturesTitle: 'User Features',
+    showUsageTitle: 'Show Usage',
+    showUsageDesc: 'Show token usage and limits under the input area.',
+    contextLimitTitle: 'Follow-up Context Limit',
+    contextLimitDesc: 'History message count retained in follow-up mode.',
+    modelProviderTitle: 'Model Provider Settings',
+    modelProviderDesc: 'Set specific models for text/vision tasks. Leave empty for default.',
+    textModel: 'Text Model',
+    visionModel: 'Vision Model',
+    
+    // Admin: Common
+    edit: 'Edit',
+    color: 'Color',
+    chars: 'Chars',
+    visuals: 'Visuals',
+    linkedDevices: 'Linked Devices',
+    none: 'None',
+
+    // Admin: Limit Modal
+    limitTitleMain: 'Set Token Limit',
+    limitTitleImage: 'Set Image Limit',
+    limitDescMain: 'Setting limit for Main Key',
+    limitDescImage: 'Setting limit for Image Key',
+    limitDescSuffix: '.',
+    currentUsage: 'Current Usage',
+    unlimited: 'Unlimited',
+    limitInputMain: 'Token Limit Value',
+    limitInputImage: 'Image Count Limit',
+    limitHint: 'Key will be banned when usage reaches this limit.',
+    cancel: 'Cancel',
+    save: 'Save Settings',
+    saving: 'Saving...',
 
     // AI Mode
     aiModeTitle: 'AI Operation Mode',

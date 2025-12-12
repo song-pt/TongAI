@@ -451,10 +451,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
           <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} variant="light" />
           <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
              <button onClick={() => setActiveTab('keys')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'keys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{t.tabKeys}</button>
-             <button onClick={() => setActiveTab('imageKeys')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'imageKeys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><ImageIcon className="w-3 h-3" /> 图片密钥</button>
+             <button onClick={() => setActiveTab('imageKeys')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'imageKeys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><ImageIcon className="w-3 h-3" /> {t.tabImageKeys}</button>
              <button onClick={() => setActiveTab('devices')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'devices' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{t.tabDevices}</button>
-             <button onClick={() => setActiveTab('subjects')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'subjects' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Palette className="w-3 h-3" /> 学科与UI</button>
-             <button onClick={() => setActiveTab('levels')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'levels' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><GraduationCap className="w-3 h-3" /> 等级管理</button>
+             <button onClick={() => setActiveTab('subjects')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'subjects' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Palette className="w-3 h-3" /> {t.tabSubjects}</button>
+             <button onClick={() => setActiveTab('levels')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'levels' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><GraduationCap className="w-3 h-3" /> {t.tabLevels}</button>
              <button onClick={() => setActiveTab('settings')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{t.tabSettings}</button>
           </div>
           <button onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors whitespace-nowrap"><LogOut className="w-4 h-4" />{t.logout}</button>
@@ -468,11 +468,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
               <section className="bg-white rounded-2xl shadow-sm border p-6">
                  <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <ImageIcon className="w-5 h-5 text-purple-600" />
-                    网站图标设置 (App Icon)
+                    {t.appIconTitle}
                  </h2>
                  <div className="flex items-center gap-6">
                     <div className="w-20 h-20 rounded-xl bg-gray-100 border flex items-center justify-center overflow-hidden">
-                       {appLogo ? <img src={appLogo} alt="Logo" className="w-full h-full object-contain" /> : <span className="text-gray-400 text-xs">无图标</span>}
+                       {appLogo ? <img src={appLogo} alt="Logo" className="w-full h-full object-contain" /> : <span className="text-gray-400 text-xs">{t.noIcon}</span>}
                     </div>
                     <div>
                        <input 
@@ -487,9 +487,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium text-sm"
                        >
                          <Upload className="w-4 h-4" />
-                         上传新图标
+                         {t.uploadIcon}
                        </button>
-                       <p className="text-xs text-gray-400 mt-2">建议尺寸 64x64 或 128x128，支持 PNG/JPG/SVG，小于 500KB</p>
+                       <p className="text-xs text-gray-400 mt-2">{t.iconHint}</p>
                     </div>
                  </div>
               </section>
@@ -498,14 +498,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                  <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                        <Palette className="w-5 h-5 text-purple-600" />
-                       学科配置与提示词 (Subjects & Prompts)
+                       {t.subjectsTitle}
                     </h2>
                     <button 
                       onClick={handleNewSubject}
                       className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium text-sm"
                     >
                       <Plus className="w-4 h-4" />
-                      添加学科
+                      {t.addSubject}
                     </button>
                  </div>
 
@@ -526,19 +526,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                                   </div>
                                </div>
                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${sub.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                 {sub.is_active ? '启用' : '禁用'}
+                                 {sub.is_active ? t.enable : t.ban}
                                </span>
                             </div>
                             <div className="space-y-2 mt-3 text-xs text-gray-500">
                                <div className="flex items-center gap-2">
-                                 <span className="font-semibold text-gray-400">颜色:</span>
+                                 <span className="font-semibold text-gray-400">{t.color}:</span>
                                  <div className={`w-3 h-3 rounded-full bg-${sub.color}-500`}></div> {sub.color}
                                </div>
                                <div className="truncate">
-                                 <span className="font-semibold text-gray-400">字符:</span> {sub.background_chars || '(无)'}
+                                 <span className="font-semibold text-gray-400">{t.chars}:</span> {sub.background_chars || `(${t.none})`}
                                </div>
                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-gray-400">视觉:</span>
+                                  <span className="font-semibold text-gray-400">{t.visuals}:</span>
                                   <span>Opacity: {sub.char_opacity ?? 0.15}, Scale: {sub.char_size_scale ?? 1.0}</span>
                                </div>
                             </div>
@@ -547,7 +547,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                                  onClick={() => handleEditSubject(sub)}
                                  className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-bold flex items-center justify-center gap-1"
                                >
-                                 <Edit3 className="w-3 h-3" /> 编辑
+                                 <Edit3 className="w-3 h-3" /> {t.edit}
                                </button>
                                <button 
                                  onClick={() => handleDelete(sub.code)}
@@ -569,14 +569,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
               <div className="flex items-center justify-between mb-6">
                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <GraduationCap className="w-5 h-5 text-purple-600" />
-                    等级(年级)管理 (Levels Management)
+                    {t.levelsTitle}
                  </h2>
                  <button 
                    onClick={handleNewLevel}
                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium text-sm"
                  >
                    <Plus className="w-4 h-4" />
-                   添加等级
+                   {t.addLevel}
                  </button>
               </div>
 
@@ -597,7 +597,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                                </div>
                             </div>
                             <span className={`px-2 py-0.5 rounded text-xs font-bold ${lvl.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                              {lvl.is_active ? '启用' : '禁用'}
+                              {lvl.is_active ? t.enable : t.ban}
                             </span>
                          </div>
                          <div className="flex gap-2 mt-4 pt-3 border-t">
@@ -605,7 +605,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                               onClick={() => handleEditLevel(lvl)}
                               className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-bold flex items-center justify-center gap-1"
                             >
-                              <Edit3 className="w-3 h-3" /> 编辑
+                              <Edit3 className="w-3 h-3" /> {t.edit}
                             </button>
                             <button 
                               onClick={() => handleDelete(lvl.code)}
@@ -631,14 +631,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                   <div className="space-y-2 pt-4 border-t"><label className="block text-sm font-semibold text-gray-700 flex items-center gap-2"><Bot className="w-4 h-4 text-gray-500" />{t.aiModeTitle}</label><div className="grid grid-cols-2 gap-3"><div onClick={() => setAiMode('solver')} className={`cursor-pointer border rounded-xl p-3 text-sm flex flex-col gap-1 ${aiMode === 'solver' ? 'bg-purple-50 border-purple-200 text-purple-800' : 'hover:bg-gray-50 text-gray-600'}`}><span className="font-bold flex items-center gap-2"><div className={`w-3 h-3 rounded-full ${aiMode === 'solver' ? 'bg-purple-600' : 'border border-gray-400'}`}></div>{t.modeSolver}</span></div><div onClick={() => setAiMode('normal')} className={`cursor-pointer border rounded-xl p-3 text-sm flex flex-col gap-1 ${aiMode === 'normal' ? 'bg-blue-50 border-blue-200 text-blue-800' : 'hover:bg-gray-50 text-gray-600'}`}><span className="font-bold flex items-center gap-2"><div className={`w-3 h-3 rounded-full ${aiMode === 'normal' ? 'bg-blue-600' : 'border border-gray-400'}`}></div>{t.modeNormal}</span></div></div><p className="text-xs text-gray-500">{t.aiModeDesc}</p></div>
                   
                   <div className="space-y-4 pt-4 border-t">
-                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">用户端功能开关 (Features)</h3>
+                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">{t.userFeaturesTitle}</h3>
                       <div className="flex items-center justify-between p-3 border rounded-xl bg-gray-50/50">
                          <div>
                             <span className="font-medium text-gray-800 text-sm flex items-center gap-2">
                                <Gauge className="w-4 h-4 text-gray-500" />
-                               显示用量 (Show Usage)
+                               {t.showUsageTitle}
                             </span>
-                            <p className="text-xs text-gray-500 mt-1">允许用户在输入框下方看到自己的 Token 使用情况和额度上限。</p>
+                            <p className="text-xs text-gray-500 mt-1">{t.showUsageDesc}</p>
                          </div>
                          <button 
                            type="button"
@@ -653,9 +653,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                           <div>
                               <span className="font-medium text-gray-800 text-sm flex items-center gap-2">
                                   <MessageCircle className="w-4 h-4 text-gray-500" />
-                                  追问上下文长度 (Context Limit)
+                                  {t.contextLimitTitle}
                               </span>
-                              <p className="text-xs text-gray-500 mt-1">设置用户在“追问”模式下，AI 能记住的历史对话数量。</p>
+                              <p className="text-xs text-gray-500 mt-1">{t.contextLimitDesc}</p>
                           </div>
                           <div className="flex items-center gap-4 mt-1">
                               <input 
@@ -672,7 +672,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                   </div>
 
                   <div className="space-y-4 pt-4 border-t">
-                     <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Server className="w-4 h-4 text-gray-500" /> 模型服务商设置 (Model Provider)</h3>
+                     <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Server className="w-4 h-4 text-gray-500" /> {t.modelProviderTitle}</h3>
                      
                      <div className="space-y-2">
                        <label className="text-xs font-semibold text-gray-500 uppercase">API Base URL</label>
@@ -689,7 +689,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
 
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Cpu className="w-3 h-3" /> 文字对话模型 (Text)</label>
+                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Cpu className="w-3 h-3" /> {t.textModel}</label>
                           <input 
                              type="text" 
                              value={aiTextModel} 
@@ -699,7 +699,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><ImageIcon className="w-3 h-3" /> 识图模型 (Vision)</label>
+                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><ImageIcon className="w-3 h-3" /> {t.visionModel}</label>
                           <input 
                              type="text" 
                              value={aiVisionModel} 
@@ -709,7 +709,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                           />
                         </div>
                      </div>
-                     <p className="text-[10px] text-gray-400">设置用于处理纯文本问题和带图片问题的不同模型。若留空则使用默认配置。</p>
+                     <p className="text-[10px] text-gray-400">{t.modelProviderDesc}</p>
                   </div>
 
                   <div className="space-y-2 pt-4 border-t"><label className="block text-sm font-semibold text-gray-700 flex items-center gap-2"><Lock className="w-4 h-4 text-gray-500" />{t.adminPassTitle}</label><input type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500" placeholder={t.adminPassPlaceholder} /><p className="text-xs text-gray-500">{t.adminPassDesc}</p></div>
@@ -722,11 +722,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         {(activeTab === 'keys' || activeTab === 'imageKeys') && (
           <>
             <section className="bg-white rounded-2xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-purple-600" />{activeTab === 'keys' ? t.addKeyTitle : '分发新图片密钥'}</h2>
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-purple-600" />{activeTab === 'keys' ? t.addKeyTitle : t.addImageKeyTitle}</h2>
               <form onSubmit={handleAddKey} className="flex gap-4 flex-wrap sm:flex-nowrap"><input type="text" value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder={activeTab === 'keys' ? "密钥 (例如: vip-888)" : "图片密钥 (例如: img-vip-001)"} className="flex-1 min-w-[200px] px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-200 outline-none" required /><input type="text" value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="备注 (例如: 张三)" className="flex-1 min-w-[200px] px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-200 outline-none" /><button type="submit" disabled={isSubmitting} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">{isSubmitting ? '...' : t.addKeyBtn}</button></form>
             </section>
             <section className="space-y-4">
-              <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-700">{activeTab === 'keys' ? `${t.tabKeys} (${keys.length})` : `图片密钥列表 (${imageKeys.length})`}</h2><button onClick={loadData} className="text-sm text-purple-600 hover:underline">{t.refresh}</button></div>
+              <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-700">{activeTab === 'keys' ? `${t.tabKeys} (${keys.length})` : `${t.tabImageKeys} (${imageKeys.length})`}</h2><button onClick={loadData} className="text-sm text-purple-600 hover:underline">{t.refresh}</button></div>
               {loading ? (<div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-purple-600 animate-spin" /></div>) : (activeTab === 'keys' ? keys.length : imageKeys.length) === 0 ? (<div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed">{t.noKeys}</div>) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {(activeTab === 'keys' ? keys : imageKeys).map((item: any) => {
@@ -739,13 +739,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                     let connectedInfo = null;
                     if (isImageKey) {
                       const linkedDevices = getLinkedDevicesForImageKey(code);
-                      connectedInfo = (<div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100"><p className="font-semibold mb-1">已关联设备 ({linkedDevices.length}):</p>{linkedDevices.length === 0 ? (<span className="text-gray-400">无</span>) : (<ul className="space-y-1 max-h-20 overflow-y-auto">{linkedDevices.map(d => (<li key={d.device_id} className="flex justify-between"><span>{d.device_id.slice(0, 6)}...</span><span className="text-purple-600 font-mono">{d.key_code}</span></li>))}</ul>)}</div>);
+                      connectedInfo = (<div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100"><p className="font-semibold mb-1">{t.linkedDevices} ({linkedDevices.length}):</p>{linkedDevices.length === 0 ? (<span className="text-gray-400">{t.none}</span>) : (<ul className="space-y-1 max-h-20 overflow-y-auto">{linkedDevices.map(d => (<li key={d.device_id} className="flex justify-between"><span>{d.device_id.slice(0, 6)}...</span><span className="text-purple-600 font-mono">{d.key_code}</span></li>))}</ul>)}</div>);
                     }
                     return (
                     <div key={item.id} className={`bg-white p-5 rounded-2xl border transition-all hover:shadow-md ${!item.is_active ? 'opacity-80' : ''}`}>
                       <div className="flex justify-between items-start mb-3"><div><div className="flex items-center gap-2"><h3 className="font-mono text-xl font-bold text-gray-800 tracking-wide">{code}</h3>{isOverLimit && !item.is_active && (<span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> 超限</span>)}</div><p className="text-sm text-gray-500 mt-1">{item.note || '无备注'}</p></div><div className={`px-2 py-0.5 text-xs rounded-full font-medium ${item.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.is_active ? t.enable : t.ban}</div></div>
-                      <div className="space-y-3 mb-4"><div className="grid grid-cols-2 gap-2">{!isImageKey && (<div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg"><Smartphone className="w-4 h-4 text-gray-400" /><div><p className="text-xs text-gray-400">设备数</p><span className="font-bold text-gray-900">{item.device_sessions?.[0]?.count || 0}</span></div></div>)}<div onClick={() => openLimitModal(item, isImageKey ? 'image' : 'main')} className={`flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group relative ${isImageKey ? 'col-span-2' : ''}`} title="点击设置限额"><Gauge className={`w-4 h-4 ${isOverLimit ? 'text-red-500' : 'text-blue-500'}`} /><div className="flex-1 min-w-0"><p className="text-xs text-gray-400 flex items-center justify-between">{isImageKey ? '图片数量' : 'Token'} <span className="group-hover:opacity-100 opacity-0 text-[10px] text-blue-600 font-bold transition-opacity">设置</span></p><div className="flex items-baseline gap-1 font-bold text-gray-900 truncate"><span>{usage}</span><span className="text-gray-400 font-normal text-xs">/</span>{limit === null ? (<InfinityIcon className="w-3 h-3 text-gray-400" />) : (<span className={isOverLimit ? 'text-red-600' : ''}>{limit}</span>)}</div></div></div></div>{limit !== null && (<div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : percent > 80 ? 'bg-amber-400' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div>)}{connectedInfo}</div>
-                      <div className="flex items-center gap-2 pt-2 border-t mt-2">{!isImageKey && (<button onClick={() => openHistory('key', code, `密钥 ${code} 的历史记录`)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><MessageSquare className="w-4 h-4" />{t.history}</button>)}<button onClick={() => isImageKey ? handleToggleImageKey(item) : handleToggleKey(item)} className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${item.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}><Power className="w-4 h-4" />{item.is_active ? t.ban : t.enable}</button><button onClick={() => handleDelete(code)} className="w-10 flex items-center justify-center py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除"><Trash2 className="w-4 h-4" /></button></div>
+                      <div className="space-y-3 mb-4"><div className="grid grid-cols-2 gap-2">{!isImageKey && (<div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg"><Smartphone className="w-4 h-4 text-gray-400" /><div><p className="text-xs text-gray-400">设备数</p><span className="font-bold text-gray-900">{item.device_sessions?.[0]?.count || 0}</span></div></div>)}<div onClick={() => openLimitModal(item, isImageKey ? 'image' : 'main')} className={`flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group relative ${isImageKey ? 'col-span-2' : ''}`} title="点击设置限额"><Gauge className={`w-4 h-4 ${isOverLimit ? 'text-red-500' : 'text-blue-500'}`} /><div className="flex-1 min-w-0"><p className="text-xs text-gray-400 flex items-center justify-between">{isImageKey ? t.limitInputImage : 'Token'} <span className="group-hover:opacity-100 opacity-0 text-[10px] text-blue-600 font-bold transition-opacity">设置</span></p><div className="flex items-baseline gap-1 font-bold text-gray-900 truncate"><span>{usage}</span><span className="text-gray-400 font-normal text-xs">/</span>{limit === null ? (<InfinityIcon className="w-3 h-3 text-gray-400" />) : (<span className={isOverLimit ? 'text-red-600' : ''}>{limit}</span>)}</div></div></div></div>{limit !== null && (<div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : percent > 80 ? 'bg-amber-400' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div>)}{connectedInfo}</div>
+                      <div className="flex items-center gap-2 pt-2 border-t mt-2">{!isImageKey && (<button onClick={() => openHistory('key', code, `密钥 ${code} 的历史记录`)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><MessageSquare className="w-4 h-4" />{t.history}</button>)}<button onClick={() => isImageKey ? handleToggleImageKey(item) : handleToggleKey(item)} className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${item.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}><Power className="w-4 h-4" />{item.is_active ? t.ban : t.enable}</button><button onClick={() => handleDelete(code)} className="w-10 flex items-center justify-center py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors" title={t.delete}><Trash2 className="w-4 h-4" /></button></div>
                     </div>
                   );})}
                 </div>
@@ -766,7 +766,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                            <th className="px-6 py-3 font-medium">{t.deviceType}</th>
                            <th className="px-6 py-3 font-medium">{t.deviceKey}</th>
                            <th className="px-6 py-3 font-medium">地区/Location</th>
-                           <th className="px-6 py-3 font-medium">关联图片密钥</th>
+                           <th className="px-6 py-3 font-medium">{t.tabImageKeys}</th>
                            <th className="px-6 py-3 font-medium">{t.deviceId}</th>
                            <th className="px-6 py-3 font-medium">{t.status}</th>
                            <th className="px-6 py-3 font-medium">Token</th>
@@ -828,24 +828,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]">
                 <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-xl font-bold text-gray-800">{isEditingSubject ? '编辑学科' : '添加新学科'}</h3>
+                   <h3 className="text-xl font-bold text-gray-800">{isEditingSubject ? t.editSubject : t.newSubject}</h3>
                    <button onClick={() => setShowSubjectModal(false)}><X className="w-6 h-6 text-gray-400 hover:text-gray-600" /></button>
                 </div>
                 <form onSubmit={handleSaveSubject} className="space-y-4">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Code (ID)</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblCode}</label>
                         <input type="text" value={subjectForm.code} onChange={e => setSubjectForm({...subjectForm, code: e.target.value})} disabled={isEditingSubject} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 disabled:text-gray-400" placeholder="math" required />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase">显示名称</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblLabel}</label>
                         <input type="text" value={subjectForm.label} onChange={e => setSubjectForm({...subjectForm, label: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="数学" required />
                       </div>
                    </div>
 
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase">主题色 (Tailwind)</label>
+                         <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblColor}</label>
                          <select value={subjectForm.color} onChange={e => setSubjectForm({...subjectForm, color: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
                             <option value="indigo">Indigo (蓝紫)</option>
                             <option value="emerald">Emerald (翠绿)</option>
@@ -856,24 +856,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                          </select>
                       </div>
                       <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase">图标</label>
+                         <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblIcon}</label>
                          <select value={subjectForm.icon} onChange={e => setSubjectForm({...subjectForm, icon: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="book">Book (书本)</option>
-                            <option value="calculator">Calculator (计算器)</option>
-                            <option value="pen">Pen (钢笔)</option>
-                            <option value="languages">Languages (文)</option>
-                            <option value="atom">Atom (原子/物理)</option>
-                            <option value="globe">Globe (地球/地理)</option>
-                            <option value="music">Music (音乐)</option>
-                            <option value="code">Code (编程)</option>
-                            <option value="palette">Palette (艺术)</option>
+                            <option value="book">Book</option>
+                            <option value="calculator">Calculator</option>
+                            <option value="pen">Pen</option>
+                            <option value="languages">Languages</option>
+                            <option value="atom">Atom</option>
+                            <option value="globe">Globe</option>
+                            <option value="music">Music</option>
+                            <option value="code">Code</option>
+                            <option value="palette">Palette</option>
                          </select>
                       </div>
                    </div>
 
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> 粒子大小 (Size)</label>
+                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> {t.lblSize}</label>
                          <div className="flex items-center gap-2">
                              <input 
                                type="range" 
@@ -888,7 +888,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                          </div>
                       </div>
                       <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> 透明度 (Opacity)</label>
+                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> {t.lblOpacity}</label>
                          <div className="flex items-center gap-2">
                              <input 
                                type="range" 
@@ -905,17 +905,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                    </div>
 
                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">前置提示词 (Prompt Prefix)</label>
+                      <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblPrompt}</label>
                       <textarea 
                         value={subjectForm.prompt_prefix || ''} 
                         onChange={e => setSubjectForm({...subjectForm, prompt_prefix: e.target.value})}
                         className="w-full px-3 py-2 border rounded-lg text-sm h-32" 
-                        placeholder="将会发送给 AI 作为该学科的 System Prompt..."
+                        placeholder={t.promptPlaceholder}
                       />
                    </div>
 
                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">背景字符 (Background Chars)</label>
+                      <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblBgChars}</label>
                       <input 
                         type="text" 
                         value={subjectForm.background_chars || ''} 
@@ -923,7 +923,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                         className="w-full px-3 py-2 border rounded-lg text-sm" 
                         placeholder="例如: 12+-x"
                       />
-                      <p className="text-[10px] text-gray-400">这些字符将随机飘浮在背景中</p>
+                      <p className="text-[10px] text-gray-400">{t.lblBgCharsHint}</p>
                    </div>
                    
                    <div className="flex items-center gap-2 pt-2">
@@ -933,11 +933,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                         checked={subjectForm.is_active} 
                         onChange={e => setSubjectForm({...subjectForm, is_active: e.target.checked})}
                       />
-                      <label htmlFor="isActiveSubject" className="text-sm text-gray-700">启用该学科</label>
+                      <label htmlFor="isActiveSubject" className="text-sm text-gray-700">{t.enableSubject}</label>
                    </div>
 
                    <button type="submit" disabled={isSubmitting} className="w-full bg-purple-600 text-white py-2.5 rounded-lg font-bold hover:bg-purple-700 transition-colors mt-4">
-                      {isSubmitting ? '保存中...' : '保存学科配置'}
+                      {isSubmitting ? t.saving : t.saveSubject}
                    </button>
                 </form>
              </div>
@@ -948,28 +948,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 animate-in zoom-in-95 duration-200">
                 <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-xl font-bold text-gray-800">{isEditingLevel ? '编辑等级' : '添加新等级'}</h3>
+                   <h3 className="text-xl font-bold text-gray-800">{isEditingLevel ? t.editLevel : t.newLevel}</h3>
                    <button onClick={() => setShowLevelModal(false)}><X className="w-6 h-6 text-gray-400 hover:text-gray-600" /></button>
                 </div>
                 <form onSubmit={handleSaveLevel} className="space-y-4">
                    <div className="space-y-1">
-                     <label className="text-xs font-semibold text-gray-500 uppercase">Code (ID)</label>
+                     <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblCode}</label>
                      <input type="text" value={levelForm.code} onChange={e => setLevelForm({...levelForm, code: e.target.value})} disabled={isEditingLevel} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 disabled:text-gray-400" placeholder="1" required />
                    </div>
                    <div className="space-y-1">
-                     <label className="text-xs font-semibold text-gray-500 uppercase">显示名称 (Label)</label>
+                     <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblLabel}</label>
                      <input type="text" value={levelForm.label} onChange={e => setLevelForm({...levelForm, label: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="一年级" required />
                    </div>
                    <div className="space-y-1">
-                     <label className="text-xs font-semibold text-gray-500 uppercase">排序权重 (Sort Order)</label>
+                     <label className="text-xs font-semibold text-gray-500 uppercase">{t.lblSort}</label>
                      <input type="number" value={levelForm.sort_order} onChange={e => setLevelForm({...levelForm, sort_order: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-lg text-sm" />
                    </div>
                    <div className="flex items-center gap-2 pt-2">
                       <input type="checkbox" id="isActiveLevel" checked={levelForm.is_active} onChange={e => setLevelForm({...levelForm, is_active: e.target.checked})} />
-                      <label htmlFor="isActiveLevel" className="text-sm text-gray-700">启用该等级</label>
+                      <label htmlFor="isActiveLevel" className="text-sm text-gray-700">{t.enableLevel}</label>
                    </div>
                    <button type="submit" disabled={isSubmitting} className="w-full bg-purple-600 text-white py-2.5 rounded-lg font-bold hover:bg-purple-700 transition-colors mt-4">
-                      {isSubmitting ? '保存中...' : '保存'}
+                      {isSubmitting ? t.saving : t.saveLevel}
                    </button>
                 </form>
              </div>
@@ -997,11 +997,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         {limitModal.isOpen && (
            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Gauge className="w-6 h-6 text-purple-600" />{limitModal.type === 'main' ? '设置 Token 限额' : '设置图片数量限额'}</h3><button onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button></div>
-                <div className="space-y-4"><div className="p-3 bg-purple-50 rounded-xl text-sm text-purple-800 border border-purple-100">正在为{limitModal.type === 'main' ? '主密钥' : '图片密钥'} <strong>{limitModal.keyName}</strong> 设置限额。<br/>当前用量: {limitModal.type === 'main' ? keys.find(k => k.id === limitModal.keyId)?.total_tokens : imageKeys.find(k => k.id === limitModal.keyId)?.total_images}</div>
-                  <div className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50 cursor-pointer" onClick={() => setIsUnlimited(!isUnlimited)}><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isUnlimited ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>{isUnlimited && <CheckCircle className="w-3.5 h-3.5 text-white" />}</div><span className="font-medium text-gray-700">无限制 (Unlimited)</span></div>
-                  {!isUnlimited && (<div className="space-y-2 animate-in slide-in-from-top-2"><label className="text-sm font-semibold text-gray-700">{limitModal.type === 'main' ? 'Token 上限数值' : '图片数量上限'}</label><input type="number" value={newLimitValue} onChange={(e) => setNewLimitValue(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 font-mono text-lg" placeholder={limitModal.type === 'main' ? "例如: 10000" : "例如: 50"} autoFocus /><p className="text-xs text-gray-500">当用量达到此数值时，该密钥将被自动禁用。</p></div>)}
-                  <div className="flex gap-3 pt-4"><button onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors">取消</button><button onClick={handleSaveLimit} disabled={isSavingLimit} className="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-md disabled:opacity-70">{isSavingLimit ? '保存中...' : '保存设置'}</button></div>
+                <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Gauge className="w-6 h-6 text-purple-600" />{limitModal.type === 'main' ? t.limitTitleMain : t.limitTitleImage}</h3><button onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button></div>
+                <div className="space-y-4"><div className="p-3 bg-purple-50 rounded-xl text-sm text-purple-800 border border-purple-100">{limitModal.type === 'main' ? t.limitDescMain : t.limitDescImage} <strong>{limitModal.keyName}</strong> {t.limitDescSuffix}<br/>{t.currentUsage}: {limitModal.type === 'main' ? keys.find(k => k.id === limitModal.keyId)?.total_tokens : imageKeys.find(k => k.id === limitModal.keyId)?.total_images}</div>
+                  <div className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50 cursor-pointer" onClick={() => setIsUnlimited(!isUnlimited)}><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isUnlimited ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>{isUnlimited && <CheckCircle className="w-3.5 h-3.5 text-white" />}</div><span className="font-medium text-gray-700">{t.unlimited}</span></div>
+                  {!isUnlimited && (<div className="space-y-2 animate-in slide-in-from-top-2"><label className="text-sm font-semibold text-gray-700">{limitModal.type === 'main' ? t.limitInputMain : t.limitInputImage}</label><input type="number" value={newLimitValue} onChange={(e) => setNewLimitValue(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 font-mono text-lg" placeholder={limitModal.type === 'main' ? "例如: 10000" : "例如: 50"} autoFocus /><p className="text-xs text-gray-500">{t.limitHint}</p></div>)}
+                  <div className="flex gap-3 pt-4"><button onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors">{t.cancel}</button><button onClick={handleSaveLimit} disabled={isSavingLimit} className="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-md disabled:opacity-70">{isSavingLimit ? t.saving : t.save}</button></div>
                </div>
              </div>
            </div>
