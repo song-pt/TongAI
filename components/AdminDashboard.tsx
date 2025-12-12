@@ -1,9 +1,9 @@
 
 
 import React, { useEffect, useState, useRef } from 'react';
-import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser } from '../services/supabase';
-import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey, Subject } from '../types';
-import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu } from 'lucide-react';
+import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser, getFollowUpContextLimit, updateFollowUpContextLimit, fetchLevels, addLevel, updateLevel, deleteLevel } from '../services/supabase';
+import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey, Subject, Level } from '../types';
+import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu, MessageCircle, GraduationCap } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -16,13 +16,14 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onLanguageChange }) => {
-  const [activeTab, setActiveTab] = useState<'keys' | 'devices' | 'settings' | 'imageKeys' | 'subjects'>('keys');
+  const [activeTab, setActiveTab] = useState<'keys' | 'devices' | 'settings' | 'imageKeys' | 'subjects' | 'levels'>('keys');
   
   // Data State
   const [keys, setKeys] = useState<AccessKey[]>([]);
   const [imageKeys, setImageKeys] = useState<ImageAccessKey[]>([]);
   const [devices, setDevices] = useState<DeviceSession[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
   
   // Loading & UI State
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   
   // Feature Toggles
   const [showUsageToUser, setShowUsageToUser] = useState(false);
+  const [followUpContextLimit, setFollowUpContextLimit] = useState<number>(5);
 
   const [savingSettings, setSavingSettings] = useState(false);
   
@@ -61,6 +63,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   });
   const [isEditingSubject, setIsEditingSubject] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
+
+  // Level Form State
+  const [levelForm, setLevelForm] = useState<Partial<Level>>({
+    code: '',
+    label: '',
+    sort_order: 0,
+    is_active: true
+  });
+  const [isEditingLevel, setIsEditingLevel] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
 
   // History Modal State
   const [historyModal, setHistoryModal] = useState<{
@@ -124,17 +136,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         setAiVisionModel(provider.visionModel);
         const showUsage = await getShowUsageToUser();
         setShowUsageToUser(showUsage);
+        const contextLimit = await getFollowUpContextLimit();
+        setFollowUpContextLimit(contextLimit);
       } else if (activeTab === 'subjects') {
         const subs = await fetchSubjects(true); // fetch all including inactive
         setSubjects(subs);
         const logo = await getAppLogo();
         setAppLogo(logo);
+      } else if (activeTab === 'levels') {
+        const lvls = await fetchLevels(true);
+        setLevels(lvls);
       }
     } catch (error: any) {
       console.error("Dashboard Load Error:", error);
       const msg = error.message || "Unknown error";
       
-      if (msg === "DB_MISSING_IMAGE_TABLE" || msg.includes('relation "public.image_access_keys" does not exist')) {
+      if (msg === "DB_MISSING_IMAGE_TABLE" || msg.includes('relation "public.image_access_keys" does not exist') || msg.includes('relation "public.levels" does not exist')) {
          // Show specific modal for DB setup
          setSqlToRun(`Please run the SQL script in supabase_schema.txt`);
          setDbErrorModal(true);
@@ -226,6 +243,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         await deleteImageKey(code);
       } else if (activeTab === 'subjects') {
         await deleteSubject(code);
+      } else if (activeTab === 'levels') {
+        await deleteLevel(code);
       }
       loadData();
     } catch (error) {
@@ -299,7 +318,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       if (newAdminPassword.trim()) promises.push(updateAdminPassword(newAdminPassword.trim()));
       promises.push(updateAiMode(aiMode));
       promises.push(updateAiProviderConfig(aiApiKey.trim(), aiBaseUrl.trim(), aiTextModel.trim(), aiVisionModel.trim()));
-      promises.push(updateShowUsageToUser(showUsageToUser)); // Save toggle
+      promises.push(updateShowUsageToUser(showUsageToUser)); 
+      promises.push(updateFollowUpContextLimit(followUpContextLimit));
       await Promise.all(promises);
       alert(t.saveSuccess);
       setNewAdminPassword('');
@@ -340,10 +360,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     setIsSubmitting(true);
     try {
       if (isEditingSubject) {
-        // Prepare updates: Remove 'code' and 'created_at' to avoid PK conflicts or readonly errors
-        // Create a copy of the object
         const updates = { ...subjectForm };
-        // Remove the primary key and system fields from the payload
         delete (updates as any).code;
         delete (updates as any).created_at;
 
@@ -356,6 +373,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     } catch (e: any) {
       console.error(e);
       alert(`保存失败: ${e.message || '可能 ID 重复或数据格式错误'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- Levels Logic ---
+  const handleEditLevel = (lvl: Level) => {
+    setLevelForm(lvl);
+    setIsEditingLevel(true);
+    setShowLevelModal(true);
+  };
+
+  const handleNewLevel = () => {
+    setLevelForm({
+      code: '',
+      label: '',
+      sort_order: levels.length + 1,
+      is_active: true
+    });
+    setIsEditingLevel(false);
+    setShowLevelModal(true);
+  };
+
+  const handleSaveLevel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!levelForm.code || !levelForm.label) return;
+    setIsSubmitting(true);
+    try {
+      if (isEditingLevel) {
+        const updates = { ...levelForm };
+        delete (updates as any).code;
+        delete (updates as any).created_at;
+        delete (updates as any).id;
+        
+        await updateLevel(levelForm.code!, updates);
+      } else {
+        await addLevel(levelForm);
+      }
+      setShowLevelModal(false);
+      loadData();
+    } catch (e: any) {
+      alert(`保存失败: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -401,6 +460,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
              <button onClick={() => setActiveTab('imageKeys')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'imageKeys' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><ImageIcon className="w-3 h-3" /> 图片密钥</button>
              <button onClick={() => setActiveTab('devices')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'devices' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{t.tabDevices}</button>
              <button onClick={() => setActiveTab('subjects')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'subjects' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Palette className="w-3 h-3" /> 学科与UI</button>
+             <button onClick={() => setActiveTab('levels')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === 'levels' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><GraduationCap className="w-3 h-3" /> 等级管理</button>
              <button onClick={() => setActiveTab('settings')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{t.tabSettings}</button>
           </div>
           <button onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors whitespace-nowrap"><LogOut className="w-4 h-4" />{t.logout}</button>
@@ -513,6 +573,63 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
            </div>
         )}
 
+        {activeTab === 'levels' && (
+           <section className="bg-white rounded-2xl shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-6">
+                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-purple-600" />
+                    等级(年级)管理 (Levels Management)
+                 </h2>
+                 <button 
+                   onClick={handleNewLevel}
+                   className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium text-sm"
+                 >
+                   <Plus className="w-4 h-4" />
+                   添加等级
+                 </button>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                   {levels.map(lvl => (
+                      <div key={lvl.code} className={`border rounded-xl p-4 transition-all hover:shadow-md ${!lvl.is_active ? 'opacity-60 bg-gray-50' : 'bg-white'}`}>
+                         <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                               <div className={`p-2 rounded-lg bg-gray-100 text-gray-600`}>
+                                 <GraduationCap className="w-4 h-4" />
+                               </div>
+                               <div>
+                                  <h3 className="font-bold text-gray-800">{lvl.label}</h3>
+                                  <p className="text-xs text-gray-500 font-mono">#{lvl.sort_order} / {lvl.code}</p>
+                               </div>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${lvl.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {lvl.is_active ? '启用' : '禁用'}
+                            </span>
+                         </div>
+                         <div className="flex gap-2 mt-4 pt-3 border-t">
+                            <button 
+                              onClick={() => handleEditLevel(lvl)}
+                              className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-bold flex items-center justify-center gap-1"
+                            >
+                              <Edit3 className="w-3 h-3" /> 编辑
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(lvl.code)}
+                              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs font-bold"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+              )}
+           </section>
+        )}
+
         {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
           <section className="bg-white rounded-2xl shadow-sm border p-8 max-w-2xl mx-auto">
@@ -543,322 +660,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showUsageToUser ? 'translate-x-6' : 'translate-x-1'}`} />
                          </button>
                       </div>
-                  </div>
 
-                  {/* API Model Settings */}
-                  <div className="space-y-4 pt-4 border-t">
-                     <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Server className="w-4 h-4 text-gray-500" /> 模型服务商设置 (Model Provider)</h3>
-                     
-                     <div className="space-y-2">
-                       <label className="text-xs font-semibold text-gray-500 uppercase">API Base URL</label>
-                       <input type="text" value={aiBaseUrl} onChange={(e) => setAiBaseUrl(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder="https://api.siliconflow.cn/v1" />
-                     </div>
-                     
-                     <div className="space-y-2">
-                       <label className="text-xs font-semibold text-gray-500 uppercase">API Key</label>
-                       <div className="relative">
-                          <input type="password" value={aiApiKey} onChange={(e) => setAiApiKey(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder="sk-..." />
-                       </div>
-                       <p className="text-[10px] text-gray-400">留空则使用系统默认的环境变量。修改此处将覆盖 Vercel 环境变量。</p>
-                     </div>
-
-                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Cpu className="w-3 h-3" /> 文字对话模型 (Text)</label>
-                          <input 
-                             type="text" 
-                             value={aiTextModel} 
-                             onChange={(e) => setAiTextModel(e.target.value)} 
-                             className="w-full px-3 py-2 border rounded-lg text-sm font-mono bg-gray-50 focus:bg-white transition-colors" 
-                             placeholder="deepseek-ai/DeepSeek-V3" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><ImageIcon className="w-3 h-3" /> 识图模型 (Vision)</label>
-                          <input 
-                             type="text" 
-                             value={aiVisionModel} 
-                             onChange={(e) => setAiVisionModel(e.target.value)} 
-                             className="w-full px-3 py-2 border rounded-lg text-sm font-mono bg-gray-50 focus:bg-white transition-colors" 
-                             placeholder="Qwen/Qwen3-VL-30B-A3B-Instruct" 
-                          />
-                        </div>
-                     </div>
-                     <p className="text-[10px] text-gray-400">设置用于处理纯文本问题和带图片问题的不同模型。若留空则使用默认配置。</p>
-                  </div>
-
-                  <div className="space-y-2 pt-4 border-t"><label className="block text-sm font-semibold text-gray-700 flex items-center gap-2"><Lock className="w-4 h-4 text-gray-500" />{t.adminPassTitle}</label><input type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500" placeholder={t.adminPassPlaceholder} /><p className="text-xs text-gray-500">{t.adminPassDesc}</p></div>
-                  <div className="pt-6"><button type="submit" disabled={savingSettings} className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">{savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}{t.saveSettings}</button></div>
-               </form>
-             )}
-          </section>
-        )}
-
-        {/* KEYS / IMAGE KEYS SHARED */}
-        {(activeTab === 'keys' || activeTab === 'imageKeys') && (
-          <>
-            <section className="bg-white rounded-2xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-purple-600" />{activeTab === 'keys' ? t.addKeyTitle : '分发新图片密钥'}</h2>
-              <form onSubmit={handleAddKey} className="flex gap-4 flex-wrap sm:flex-nowrap"><input type="text" value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder={activeTab === 'keys' ? "密钥 (例如: vip-888)" : "图片密钥 (例如: img-vip-001)"} className="flex-1 min-w-[200px] px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-200 outline-none" required /><input type="text" value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="备注 (例如: 张三)" className="flex-1 min-w-[200px] px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-200 outline-none" /><button type="submit" disabled={isSubmitting} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">{isSubmitting ? '...' : t.addKeyBtn}</button></form>
-            </section>
-            <section className="space-y-4">
-              <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-700">{activeTab === 'keys' ? `${t.tabKeys} (${keys.length})` : `图片密钥列表 (${imageKeys.length})`}</h2><button onClick={loadData} className="text-sm text-purple-600 hover:underline">{t.refresh}</button></div>
-              {loading ? (<div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-purple-600 animate-spin" /></div>) : (activeTab === 'keys' ? keys.length : imageKeys.length) === 0 ? (<div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed">{t.noKeys}</div>) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {(activeTab === 'keys' ? keys : imageKeys).map((item: any) => {
-                    const isImageKey = activeTab === 'imageKeys';
-                    const code = item.code;
-                    const limit = isImageKey ? item.image_limit : item.token_limit;
-                    const usage = isImageKey ? item.total_images : item.total_tokens;
-                    const isOverLimit = limit !== null && usage >= limit;
-                    const percent = limit ? Math.min((usage / limit) * 100, 100) : 0;
-                    let connectedInfo = null;
-                    if (isImageKey) {
-                      const linkedDevices = getLinkedDevicesForImageKey(code);
-                      connectedInfo = (<div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100"><p className="font-semibold mb-1">已关联设备 ({linkedDevices.length}):</p>{linkedDevices.length === 0 ? (<span className="text-gray-400">无</span>) : (<ul className="space-y-1 max-h-20 overflow-y-auto">{linkedDevices.map(d => (<li key={d.device_id} className="flex justify-between"><span>{d.device_id.slice(0, 6)}...</span><span className="text-purple-600 font-mono">{d.key_code}</span></li>))}</ul>)}</div>);
-                    }
-                    return (
-                    <div key={item.id} className={`bg-white p-5 rounded-2xl border transition-all hover:shadow-md ${!item.is_active ? 'opacity-80' : ''}`}>
-                      <div className="flex justify-between items-start mb-3"><div><div className="flex items-center gap-2"><h3 className="font-mono text-xl font-bold text-gray-800 tracking-wide">{code}</h3>{isOverLimit && !item.is_active && (<span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> 超限</span>)}</div><p className="text-sm text-gray-500 mt-1">{item.note || '无备注'}</p></div><div className={`px-2 py-0.5 text-xs rounded-full font-medium ${item.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.is_active ? t.enable : t.ban}</div></div>
-                      <div className="space-y-3 mb-4"><div className="grid grid-cols-2 gap-2">{!isImageKey && (<div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg"><Smartphone className="w-4 h-4 text-gray-400" /><div><p className="text-xs text-gray-400">设备数</p><span className="font-bold text-gray-900">{item.device_sessions?.[0]?.count || 0}</span></div></div>)}<div onClick={() => openLimitModal(item, isImageKey ? 'image' : 'main')} className={`flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group relative ${isImageKey ? 'col-span-2' : ''}`} title="点击设置限额"><Gauge className={`w-4 h-4 ${isOverLimit ? 'text-red-500' : 'text-blue-500'}`} /><div className="flex-1 min-w-0"><p className="text-xs text-gray-400 flex items-center justify-between">{isImageKey ? '图片数量' : 'Token'} <span className="group-hover:opacity-100 opacity-0 text-[10px] text-blue-600 font-bold transition-opacity">设置</span></p><div className="flex items-baseline gap-1 font-bold text-gray-900 truncate"><span>{usage}</span><span className="text-gray-400 font-normal text-xs">/</span>{limit === null ? (<InfinityIcon className="w-3 h-3 text-gray-400" />) : (<span className={isOverLimit ? 'text-red-600' : ''}>{limit}</span>)}</div></div></div></div>{limit !== null && (<div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : percent > 80 ? 'bg-amber-400' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div>)}{connectedInfo}</div>
-                      <div className="flex items-center gap-2 pt-2 border-t mt-2">{!isImageKey && (<button onClick={() => openHistory('key', code, `密钥 ${code} 的历史记录`)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><MessageSquare className="w-4 h-4" />{t.history}</button>)}<button onClick={() => isImageKey ? handleToggleImageKey(item) : handleToggleKey(item)} className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${item.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}><Power className="w-4 h-4" />{item.is_active ? t.ban : t.enable}</button><button onClick={() => handleDelete(code)} className="w-10 flex items-center justify-center py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除"><Trash2 className="w-4 h-4" /></button></div>
-                    </div>
-                  );})}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-
-        {/* DEVICES TAB */}
-        {activeTab === 'devices' && (
-          <section className="space-y-4">
-             <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-700">{t.tabDevices} ({devices.length})</h2><button onClick={loadData} className="text-sm text-purple-600 hover:underline">{t.refresh}</button></div>
-             {loading ? (<div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-purple-600 animate-spin" /></div>) : devices.length === 0 ? (<div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed">{t.noDevices}</div>) : (
-                <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-50 text-gray-500 border-b">
-                         <tr>
-                           <th className="px-6 py-3 font-medium">{t.deviceType}</th>
-                           <th className="px-6 py-3 font-medium">{t.deviceKey}</th>
-                           <th className="px-6 py-3 font-medium">地区/Location</th>
-                           <th className="px-6 py-3 font-medium">关联图片密钥</th>
-                           <th className="px-6 py-3 font-medium">{t.deviceId}</th>
-                           <th className="px-6 py-3 font-medium">{t.status}</th>
-                           <th className="px-6 py-3 font-medium">Token</th>
-                           <th className="px-6 py-3 font-medium">{t.lastSeen}</th>
-                           <th className="px-6 py-3 font-medium text-right">{t.operate}</th>
-                         </tr>
-                      </thead>
-                      <tbody className="divide-y">{devices.map((device) => {const isMobileDevice = isMobile(device.device_info || ''); return (<tr key={`${device.key_code}-${device.device_id}`} className={`hover:bg-gray-50 transition-colors ${device.is_banned ? 'bg-red-50/50' : ''}`}><td className="px-6 py-4"><div className="flex items-center gap-2"><div className={`p-1.5 rounded-lg ${isMobileDevice ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{isMobileDevice ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}</div><span className="font-medium text-gray-700">{isMobileDevice ? '移动端' : 'PC端'}</span></div></td><td className="px-6 py-4"><span className="font-mono bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">{device.key_code}</span></td>
-                      <td className="px-6 py-4"><span className="text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs">{device.location || 'Unknown'}</span></td>
-                      <td className="px-6 py-4">{device.image_key_code ? (<span className="font-mono bg-pink-50 text-pink-700 px-2 py-1 rounded border border-pink-100 text-xs">{device.image_key_code}</span>) : (<span className="text-gray-400 text-xs">-</span>)}</td><td className="px-6 py-4 text-gray-500 font-mono text-xs"><div className="flex items-center gap-1">{device.device_id.slice(0, 8)}...<button onClick={() => openHistory('device', device.device_id, `设备 ${device.device_id.slice(0, 8)}... 的历史记录`)} className="ml-2 text-blue-600 hover:text-blue-800" title="查看此设备的历史记录"><MessageSquare className="w-3.5 h-3.5" /></button></div></td><td className="px-6 py-4">{device.is_banned ? (<span className="inline-flex items-center gap-1 text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full"><Ban className="w-3 h-3" /> {t.ban}</span>) : (<span className="inline-flex items-center gap-1 text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full"><CheckCircle className="w-3 h-3" /> {t.enable}</span>)}</td><td className="px-6 py-4"><div className="flex items-center gap-1.5 text-amber-600 font-medium"><Coins className="w-3.5 h-3.5" />{device.total_tokens}</div></td><td className="px-6 py-4 text-gray-500"><div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{new Date(device.last_seen).toLocaleString('zh-CN')}</div></td><td className="px-6 py-4 text-right"><button onClick={() => handleDeviceBanToggle(device)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${device.is_banned ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>{device.is_banned ? t.unban : t.ban}</button></td></tr>);})}</tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-          </section>
-        )}
-
-        {/* ... (Existing Modals: DB Error, Subject Edit, History, Limit) ... */}
-        {/* Keeping existing modals exactly as they were, just rendering below */}
-        {dbErrorModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                <div className="flex flex-col items-center gap-4 text-center">
-                   <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-                      <AlertTriangle className="w-8 h-8" />
-                   </div>
-                   <h3 className="text-2xl font-bold text-gray-800">Database Setup Required</h3>
-                   <p className="text-gray-600">
-                     It seems your database schema is missing required tables (e.g., <code>image_access_keys</code> or <code>subjects</code>).
-                     <br/>
-                     Please go to your Supabase SQL Editor and run the following script:
-                   </p>
-                   
-                   <div className="w-full bg-gray-900 rounded-xl p-4 text-left overflow-x-auto max-h-[300px] border border-gray-700 relative group">
-                      <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-all">
-                        {`-- Copy content from supabase_schema.txt --\n\n${sqlToRun}`}
-                      </pre>
-                      <button 
-                        onClick={() => {
-                           navigator.clipboard.writeText("Please check supabase_schema.txt file for full code.");
-                           alert("Please open supabase_schema.txt file to copy the full SQL script.");
-                        }}
-                        className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white text-xs px-2 py-1 rounded transition-colors"
-                      >
-                        Copy Tip
-                      </button>
-                   </div>
-                   
-                   <button 
-                     onClick={() => setDbErrorModal(false)}
-                     className="mt-4 px-8 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors"
-                   >
-                     I Have Updated the Database
-                   </button>
-                </div>
-             </div>
-          </div>
-        )}
-        
-        {/* Subject Edit Modal */}
-        {showSubjectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]">
-                <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-xl font-bold text-gray-800">{isEditingSubject ? '编辑学科' : '添加新学科'}</h3>
-                   <button onClick={() => setShowSubjectModal(false)}><X className="w-6 h-6 text-gray-400 hover:text-gray-600" /></button>
-                </div>
-                <form onSubmit={handleSaveSubject} className="space-y-4">
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Code (ID)</label>
-                        <input type="text" value={subjectForm.code} onChange={e => setSubjectForm({...subjectForm, code: e.target.value})} disabled={isEditingSubject} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 disabled:text-gray-400" placeholder="math" required />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase">显示名称</label>
-                        <input type="text" value={subjectForm.label} onChange={e => setSubjectForm({...subjectForm, label: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="数学" required />
-                      </div>
-                   </div>
-
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase">主题色 (Tailwind)</label>
-                         <select value={subjectForm.color} onChange={e => setSubjectForm({...subjectForm, color: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="indigo">Indigo (蓝紫)</option>
-                            <option value="emerald">Emerald (翠绿)</option>
-                            <option value="violet">Violet (紫罗兰)</option>
-                            <option value="rose">Rose (玫瑰红)</option>
-                            <option value="amber">Amber (琥珀黄)</option>
-                            <option value="sky">Sky (天蓝)</option>
-                         </select>
-                      </div>
-                      <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase">图标</label>
-                         <select value={subjectForm.icon} onChange={e => setSubjectForm({...subjectForm, icon: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="book">Book (书本)</option>
-                            <option value="calculator">Calculator (计算器)</option>
-                            <option value="pen">Pen (钢笔)</option>
-                            <option value="languages">Languages (文)</option>
-                            <option value="atom">Atom (原子/物理)</option>
-                            <option value="globe">Globe (地球/地理)</option>
-                            <option value="music">Music (音乐)</option>
-                            <option value="code">Code (编程)</option>
-                            <option value="palette">Palette (艺术)</option>
-                         </select>
-                      </div>
-                   </div>
-
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> 粒子大小 (Size)</label>
-                         <div className="flex items-center gap-2">
-                             <input 
-                               type="range" 
-                               min="0.5" 
-                               max="3.0" 
-                               step="0.1"
-                               value={subjectForm.char_size_scale ?? 1.0} 
-                               onChange={e => setSubjectForm({...subjectForm, char_size_scale: parseFloat(e.target.value)})} 
-                               className="flex-1"
-                             />
-                             <span className="text-xs font-mono w-8">{subjectForm.char_size_scale ?? 1.0}</span>
-                         </div>
-                      </div>
-                      <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> 透明度 (Opacity)</label>
-                         <div className="flex items-center gap-2">
-                             <input 
-                               type="range" 
-                               min="0.05" 
-                               max="1.0" 
-                               step="0.05"
-                               value={subjectForm.char_opacity ?? 0.15} 
-                               onChange={e => setSubjectForm({...subjectForm, char_opacity: parseFloat(e.target.value)})} 
-                               className="flex-1"
-                             />
-                             <span className="text-xs font-mono w-8">{subjectForm.char_opacity ?? 0.15}</span>
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">前置提示词 (Prompt Prefix)</label>
-                      <textarea 
-                        value={subjectForm.prompt_prefix || ''} 
-                        onChange={e => setSubjectForm({...subjectForm, prompt_prefix: e.target.value})}
-                        className="w-full px-3 py-2 border rounded-lg text-sm h-32" 
-                        placeholder="将会发送给 AI 作为该学科的 System Prompt..."
-                      />
-                   </div>
-
-                   <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">背景字符 (Background Chars)</label>
-                      <input 
-                        type="text" 
-                        value={subjectForm.background_chars || ''} 
-                        onChange={e => setSubjectForm({...subjectForm, background_chars: e.target.value})}
-                        className="w-full px-3 py-2 border rounded-lg text-sm" 
-                        placeholder="例如: 12+-x"
-                      />
-                      <p className="text-[10px] text-gray-400">这些字符将随机飘浮在背景中</p>
-                   </div>
-                   
-                   <div className="flex items-center gap-2 pt-2">
-                      <input 
-                        type="checkbox" 
-                        id="isActiveSubject"
-                        checked={subjectForm.is_active} 
-                        onChange={e => setSubjectForm({...subjectForm, is_active: e.target.checked})}
-                      />
-                      <label htmlFor="isActiveSubject" className="text-sm text-gray-700">启用该学科</label>
-                   </div>
-
-                   <button type="submit" disabled={isSubmitting} className="w-full bg-purple-600 text-white py-2.5 rounded-lg font-bold hover:bg-purple-700 transition-colors mt-4">
-                      {isSubmitting ? '保存中...' : '保存学科配置'}
-                   </button>
-                </form>
-             </div>
-          </div>
-        )}
-
-        {/* History Modal */}
-        {historyModal.isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-white rounded-2xl w-full max-w-4xl h-[80vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="px-6 py-4 border-b flex items-center justify-between bg-gray-50">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-purple-600" />{historyModal.title}
-                  </h3>
-                  <button onClick={() => setHistoryModal(prev => ({ ...prev, isOpen: false }))} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><X className="w-5 h-5 text-gray-500" /></button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                   {loadingHistory ? (<div className="h-full flex flex-col items-center justify-center gap-3 text-gray-500"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /><p>正在加载对话记录...</p></div>) : historyLogs.length === 0 ? (<div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400"><div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center"><MessageSquare className="w-8 h-8 opacity-50" /></div><p>暂无对话记录</p></div>) : (
-                     <div className="space-y-6">{historyLogs.map(log => (<div key={log.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"><div className="bg-gray-50 px-4 py-2 border-b text-xs text-gray-500 flex justify-between"><span>{new Date(log.created_at).toLocaleString('zh-CN')}</span><div className="flex gap-2"><span className="uppercase">{log.subject}</span>{log.grade_label && <span>• {log.grade_label}</span>}</div></div><div className="p-4 space-y-3"><div><span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded mb-1">Q</span><p className="font-medium text-gray-900">{log.question}</p></div><div className="pt-2 border-t border-dashed"><span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded mb-2">A</span><div className="text-sm text-gray-600 max-h-60 overflow-y-auto prose prose-sm max-w-none"><MathRenderer content={log.answer} /></div></div></div></div>))}</div>
-                   )}
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* Limit Modal */}
-        {limitModal.isOpen && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Gauge className="w-6 h-6 text-purple-600" />{limitModal.type === 'main' ? '设置 Token 限额' : '设置图片数量限额'}</h3><button onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button></div>
-                <div className="space-y-4"><div className="p-3 bg-purple-50 rounded-xl text-sm text-purple-800 border border-purple-100">正在为{limitModal.type === 'main' ? '主密钥' : '图片密钥'} <strong>{limitModal.keyName}</strong> 设置限额。<br/>当前用量: {limitModal.type === 'main' ? keys.find(k => k.id === limitModal.keyId)?.total_tokens : imageKeys.find(k => k.id === limitModal.keyId)?.total_images}</div>
-                  <div className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50 cursor-pointer" onClick={() => setIsUnlimited(!isUnlimited)}><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isUnlimited ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>{isUnlimited && <CheckCircle className="w-3.5 h-3.5 text-white" />}</div><span className="font-medium text-gray-700">无限制 (Unlimited)</span></div>
-                  {!isUnlimited && (<div className="space-y-2 animate-in slide-in-from-top-2"><label className="text-sm font-semibold text-gray-700">{limitModal.type === 'main' ? 'Token 上限数值' : '图片数量上限'}</label><input type="number" value={newLimitValue} onChange={(e) => setNewLimitValue(e.target.value)} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 font-mono text-lg" placeholder={limitModal.type === 'main' ? "例如: 10000" : "例如: 50"} autoFocus /><p className="text-xs text-gray-500">当用量达到此数值时，该密钥将被自动禁用。</p></div>)}
-                  <div className="flex gap-3 pt-4"><button onClick={() => setLimitModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors">取消</button><button onClick={handleSaveLimit} disabled={isSavingLimit} className="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-md disabled:opacity-70">{isSavingLimit ? '保存中...' : '保存设置'}</button></div>
-               </div>
-             </div>
-           </div>
-        )}
-      </main>
-    </div>
-  );
-};
-
-export default AdminDashboard;
+                      <div className="flex flex-col gap-2 p-3 border rounded-xl bg-gray-50/50">
+                          <div>
+                              <span className="font-medium text-gray-800 text-sm flex items-center gap-2">
+                                  <MessageCircle className="w-4 h-4 text-gray-500" />
+                                  追问上下文长度 (Context Limit)
+                              </span>
+                              <p className="text-xs text-gray-500 mt-1">设置用户在“追问”模式下，AI 能记住的历史对话数量。</p>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1">
+                              <input 
+                                type="range" 
+                                min="1" 
+                                max="20" 
+                                value={followUpContextLimit} 
+                                onChange={(e) => setFollowUpContextLimit(parseInt(e.target.value))} 
+                                className="flex-1"
+                              />
+                              <span className="font-mono bg-white px-3 py-1 rounded border text-sm font-bold">{followUpContextLimit}</span>

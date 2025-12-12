@@ -2,7 +2,7 @@
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
 }
@@ -61,6 +61,15 @@ export interface Subject {
   char_size_scale?: number; // default 1.0
   is_active: boolean;
   sort_order: number;
+}
+
+// New: Levels (formerly Grades)
+export interface Level {
+  id: string;
+  code: string;
+  label: string;
+  sort_order: number;
+  is_active: boolean;
 }
 
 export interface DeviceSession {

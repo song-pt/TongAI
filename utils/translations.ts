@@ -21,17 +21,21 @@ export const translations = {
     
     // Header & App
     welcomeTitle: '有什么学习难题需要帮忙吗？',
-    welcomeDesc: '选择学科与年级，输入题目，立刻获得详细的专家解析',
+    welcomeDesc: '选择学科与等级，输入题目，立刻获得详细的专家解析',
     expertAnalysis: '专家解析',
     loading: '正在思考解题步骤...',
     searchPlaceholder: '搜索历史记录 (关键词/时间)...',
     noSearchResults: '未找到匹配的历史记录',
+    askFurther: '追问',
+    exitFollowUp: '退出追问',
+    followUpTitle: '题目追问',
+    followUpPlaceholder: '对这道题还有什么疑问？',
     
     // Input Area
     subjectMath: '数学',
     subjectChinese: '语文',
     subjectEnglish: '英语',
-    gradeUnlimited: '不限年级',
+    gradeUnlimited: '不限等级', // Changed from Grade to Level (等级)
     placeholderMath: '请输入数学题目...',
     placeholderChinese: '请输入语文题目或文本...',
     placeholderEnglish: '请输入英语题目或文本...',
@@ -75,7 +79,7 @@ export const translations = {
     modeSolver: '做题助手模式 (Solver Mode)',
     modeNormal: '通用 AI 模式 (Normal Mode)',
     
-    // Grades
+    // Legacy Grades (Kept for fallback, but dynamic levels prefer DB label)
     grade1: '一年级',
     grade2: '二年级',
     grade3: '三年级',
@@ -105,17 +109,21 @@ export const translations = {
     
     // Header & App
     welcomeTitle: '有什麼學習難題需要幫忙嗎？',
-    welcomeDesc: '選擇學科與年級，輸入題目，立刻獲得詳細的專家解析',
+    welcomeDesc: '選擇學科與等級，輸入題目，立刻獲得詳細的專家解析',
     expertAnalysis: '專家解析',
     loading: '正在思考解題步驟...',
     searchPlaceholder: '搜索歷史記錄 (關鍵詞/時間)...',
     noSearchResults: '未找到匹配的歷史記錄',
+    askFurther: '追問',
+    exitFollowUp: '退出追問',
+    followUpTitle: '題目追問',
+    followUpPlaceholder: '對這道題還有什麼疑問？',
     
     // Input Area
     subjectMath: '數學',
     subjectChinese: '語文',
     subjectEnglish: '英語',
-    gradeUnlimited: '不限年級',
+    gradeUnlimited: '不限等級',
     placeholderMath: '請輸入數學題目...',
     placeholderChinese: '請輸入語文題目或文本...',
     placeholderEnglish: '請輸入英語題目或文本...',
@@ -189,17 +197,21 @@ export const translations = {
     
     // Header & App
     welcomeTitle: 'Need help with your studies?',
-    welcomeDesc: 'Select subject and grade, enter your problem, and get expert solutions instantly.',
+    welcomeDesc: 'Select subject and level, enter your problem, and get expert solutions instantly.',
     expertAnalysis: 'Expert Analysis',
     loading: 'Thinking about the solution...',
     searchPlaceholder: 'Search history (keyword/time)...',
     noSearchResults: 'No matching history found',
+    askFurther: 'Follow Up',
+    exitFollowUp: 'Exit Follow Up',
+    followUpTitle: 'Follow Up Discussion',
+    followUpPlaceholder: 'Any more questions about this?',
     
     // Input Area
     subjectMath: 'Math',
     subjectChinese: 'Chinese',
     subjectEnglish: 'English',
-    gradeUnlimited: 'All Grades',
+    gradeUnlimited: 'All Levels',
     placeholderMath: 'Enter math problem...',
     placeholderChinese: 'Enter text or question...',
     placeholderEnglish: 'Enter text or question...',

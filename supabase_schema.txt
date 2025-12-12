@@ -46,6 +46,29 @@ begin
     end if;
 end $$;
 
+-- 15. [NEW] 创建等级（年级）配置表
+create table if not exists levels (
+  id uuid default gen_random_uuid() primary key,
+  code text unique not null,
+  label text not null,
+  sort_order int default 0,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
+
+-- 插入默认等级数据
+insert into levels (code, label, sort_order) values 
+('1', '一年级', 1),
+('2', '二年级', 2),
+('3', '三年级', 3),
+('4', '四年级', 4),
+('5', '五年级', 5),
+('6', '六年级', 6),
+('7', '七年级', 7),
+('8', '八年级', 8),
+('9', '九年级', 9)
+on conflict (code) do nothing;
+
 -- 2. 创建设备会话表（存储设备记录）
 create table if not exists device_sessions (
   id uuid default gen_random_uuid() primary key,
@@ -99,7 +122,8 @@ insert into app_config (key, value) values
 ('ai_base_url', ''),
 ('ai_text_model', ''),
 ('ai_vision_model', ''),
-('show_usage_to_user', 'false')
+('show_usage_to_user', 'false'),
+('follow_up_context_limit', '5')
 on conflict (key) do nothing;
 
 -- 插入默认学科数据
@@ -113,6 +137,7 @@ on conflict (code) do nothing;
 -- 开启 RLS 策略
 alter table app_config enable row level security;
 alter table subjects enable row level security;
+alter table levels enable row level security;
 
 -- [FIX] 安全创建策略
 drop policy if exists "Allow public read access" on app_config;
@@ -126,6 +151,12 @@ create policy "Allow public read access subjects" on subjects for select using (
 
 drop policy if exists "Allow all access subjects" on subjects;
 create policy "Allow all access subjects" on subjects for all using (true) with check (true);
+
+drop policy if exists "Allow public read access levels" on levels;
+create policy "Allow public read access levels" on levels for select using (true);
+
+drop policy if exists "Allow all access levels" on levels;
+create policy "Allow all access levels" on levels for all using (true) with check (true);
 
 -- 5. [UPDATED] 创建登录函数 (支持位置信息)
 -- 先尝试删除旧函数以避免签名冲突

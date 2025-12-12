@@ -10,7 +10,8 @@ import LockScreen from './components/LockScreen';
 import AdminDashboard from './components/AdminDashboard';
 import BackgroundEffects from './components/BackgroundEffects';
 import ImageAuthModal from './components/ImageAuthModal';
-import { BrainCircuit, BookOpen, PenTool, Languages, Search, X } from 'lucide-react';
+import FollowUpView from './components/FollowUpView';
+import { BrainCircuit, BookOpen, PenTool, Languages, Search, X, MessageCircle } from 'lucide-react';
 import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData } from './types';
 import { translations } from './utils/translations';
 
@@ -53,6 +54,9 @@ const App: React.FC = () => {
   const [showUsage, setShowUsage] = useState(false);
   const [keyUsage, setKeyUsage] = useState<KeyUsageData | null>(null);
   const [imageKeyUsage, setImageKeyUsage] = useState<ImageKeyUsageData | null>(null);
+
+  // Follow Up State
+  const [followUpItem, setFollowUpItem] = useState<SolutionItem | null>(null);
 
   const t = translations[language];
 
@@ -479,6 +483,17 @@ const App: React.FC = () => {
                        <div className="h-px bg-gray-100 flex-grow"></div>
                      </h3>
                      <MathRenderer content={item.answer} />
+                     
+                     {/* Follow Up Trigger */}
+                     <div className="mt-8 flex justify-end">
+                       <button
+                         onClick={() => setFollowUpItem(item)}
+                         className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                       >
+                         <MessageCircle className="w-4 h-4" />
+                         {t.askFurther}
+                       </button>
+                     </div>
                   </div>
                 </div>
               </React.Fragment>
@@ -486,6 +501,20 @@ const App: React.FC = () => {
           })}
         </div>
       </main>
+
+      {/* Follow Up View Overlay */}
+      {followUpItem && (
+        <FollowUpView 
+          initialQuestion={followUpItem.question}
+          initialAnswer={followUpItem.answer}
+          subject={followUpItem.subject}
+          gradeLabel={followUpItem.gradeLabel}
+          userKey={userKey}
+          language={language}
+          onExit={() => setFollowUpItem(null)}
+          availableSubjects={subjects}
+        />
+      )}
 
       <ImageAuthModal 
         isOpen={showImageAuthModal} 

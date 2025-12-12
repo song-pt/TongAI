@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, Loader2, GraduationCap, BookOpenText, Image as ImageIcon, X, 
   Calculator, PenTool, Languages, Atom, Globe, Music, Code, Palette, BookOpen, Infinity as InfinityIcon } from 'lucide-react';
 import { translations } from '../utils/translations';
-import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData } from '../types';
+import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData, Level } from '../types';
 
 interface InputAreaProps {
   onSend: (message: string, grade: string, subject: string, imageData?: string) => void;
@@ -15,9 +15,11 @@ interface InputAreaProps {
   isImageAuthenticated: boolean;
   onRequestImageAuth: () => void;
   availableSubjects: Subject[];
+  availableLevels?: Level[]; // NEW: Dynamic Levels
   showUsage?: boolean;
   keyUsage?: KeyUsageData | null;
   imageKeyUsage?: ImageKeyUsageData | null;
+  isFollowUp?: boolean; // New Prop for Simple Mode
 }
 
 // Helper to map icon string to Component
@@ -45,9 +47,11 @@ const InputArea: React.FC<InputAreaProps> = ({
   isImageAuthenticated,
   onRequestImageAuth,
   availableSubjects,
+  availableLevels = [], // Default empty
   showUsage,
   keyUsage,
-  imageKeyUsage
+  imageKeyUsage,
+  isFollowUp = false
 }) => {
   const [input, setInput] = useState('');
   const [grade, setGrade] = useState('');
@@ -127,19 +131,6 @@ const InputArea: React.FC<InputAreaProps> = ({
     setSelectedImage(null);
   };
 
-  const grades = [
-    { value: '', label: t.gradeUnlimited },
-    { value: '1', label: t.grade1 },
-    { value: '2', label: t.grade2 },
-    { value: '3', label: t.grade3 },
-    { value: '4', label: t.grade4 },
-    { value: '5', label: t.grade5 },
-    { value: '6', label: t.grade6 },
-    { value: '7', label: t.grade7 },
-    { value: '8', label: t.grade8 },
-    { value: '9', label: t.grade9 },
-  ];
-
   // Helper to get tailwind classes based on color name
   const getSubjectStyles = (subCode: string) => {
     const sub = availableSubjects.find(s => s.code === subCode);
@@ -170,6 +161,7 @@ const InputArea: React.FC<InputAreaProps> = ({
   };
 
   const getPlaceholder = (subCode: string) => {
+    if (isFollowUp) return t.followUpPlaceholder;
     if (!isSolverMode) return t.placeholderDefault;
     const sub = availableSubjects.find(s => s.code === subCode);
     if (!sub) return t.placeholderDefault;
@@ -232,7 +224,7 @@ const InputArea: React.FC<InputAreaProps> = ({
             </div>
         </div>
 
-        {/* Grade Selector */}
+        {/* Level/Grade Selector */}
         <div className={`relative group ${isMobileView ? 'flex-1' : ''}`}>
             <GraduationCap className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 ${grade ? 'text-indigo-600' : 'text-gray-400'} pointer-events-none`} />
             <select
@@ -245,9 +237,10 @@ const InputArea: React.FC<InputAreaProps> = ({
                 ${grade ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-gray-600 hover:bg-gray-100'}
             `}
             >
-            {grades.map((g) => (
-                <option key={g.value} value={g.value}>
-                {g.label}
+            <option value="">{t.gradeUnlimited}</option>
+            {availableLevels.map((l) => (
+                <option key={l.code} value={l.code}>
+                {l.label}
                 </option>
             ))}
             </select>
@@ -267,21 +260,21 @@ const InputArea: React.FC<InputAreaProps> = ({
           ${isLoading ? 'border-gray-200 shadow-sm' : 'border-gray-300 shadow-lg hover:shadow-xl hover:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-100 focus-within:border-indigo-500'}
         `}
       >
-        {/* Mobile View: Selectors Top */}
-        {isSolverMode && (
+        {/* Mobile View: Selectors Top (Only show if not follow-up) */}
+        {!isFollowUp && isSolverMode && (
            <div className="sm:hidden">
               {renderSelectors(true)}
            </div>
         )}
 
         <div className="flex items-end gap-2">
-            {isSolverMode && (
+            {!isFollowUp && isSolverMode && (
               <div className="hidden sm:block">
                  {renderSelectors(false)}
               </div>
             )}
 
-            {isSolverMode && (
+            {!isFollowUp && isSolverMode && (
               <div className="w-px h-8 bg-gray-200 mb-3 mx-1 self-end hidden sm:block"></div>
             )}
 
@@ -294,6 +287,7 @@ const InputArea: React.FC<InputAreaProps> = ({
               className="flex-1 w-full min-h-[56px] max-h-[200px] py-4 px-2 bg-transparent border-none focus:ring-0 resize-none outline-none text-gray-800 placeholder-gray-400 text-lg leading-relaxed"
               rows={1}
               disabled={isLoading}
+              autoFocus={isFollowUp}
             />
 
             {/* Hidden File Input */}
@@ -307,7 +301,7 @@ const InputArea: React.FC<InputAreaProps> = ({
 
             {/* Image Upload Button & Usage Wrapper */}
             <div className="flex flex-col items-center justify-end mb-2">
-              {showUsage && isImageAuthenticated && imageKeyUsage && (
+              {showUsage && isImageAuthenticated && imageKeyUsage && !isFollowUp && (
                   <div className="mb-1 flex flex-col items-center animate-in fade-in slide-in-from-bottom-1 duration-300">
                       <span className="text-[9px] text-gray-400 font-mono leading-none mb-0.5">
                           {imageKeyUsage.total_images}/{imageKeyUsage.image_limit ?? <InfinityIcon className="w-2.5 h-2.5 inline align-middle"/>}
@@ -323,18 +317,20 @@ const InputArea: React.FC<InputAreaProps> = ({
                   </div>
               )}
               
-              <button
-                type="button"
-                onClick={handleImageClick}
-                disabled={isLoading}
-                className={`
-                  flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200
-                  ${isLoading ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 hover:text-indigo-600'}
-                `}
-                title="上传图片"
-              >
-                <ImageIcon className="w-5 h-5" />
-              </button>
+              {!isFollowUp && (
+                  <button
+                    type="button"
+                    onClick={handleImageClick}
+                    disabled={isLoading}
+                    className={`
+                      flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200
+                      ${isLoading ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 hover:text-indigo-600'}
+                    `}
+                    title="上传图片"
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+              )}
             </div>
 
             <button
@@ -372,7 +368,7 @@ const InputArea: React.FC<InputAreaProps> = ({
         )}
 
         {/* Main Token Usage Progress Bar (Bottom) */}
-        {showUsage && keyUsage && (
+        {showUsage && keyUsage && !isFollowUp && (
           <div className="px-3 pb-1 border-t border-gray-100 pt-2 flex items-center gap-3">
              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div 

@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSWORD } from '../constants';
-import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject, KeyUsageData, ImageKeyUsageData } from '../types';
+import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject, KeyUsageData, ImageKeyUsageData, Level } from '../types';
 
 // Initialize the Supabase client
 // Validate URL to prevent crash on load if env vars are missing
@@ -180,6 +180,29 @@ export const updateShowUsageToUser = async (show: boolean): Promise<void> => {
   await supabase.rpc('update_config_value', {
     key_name: 'show_usage_to_user',
     new_value: show.toString()
+  });
+};
+
+// --- Follow Up Settings ---
+
+export const getFollowUpContextLimit = async (): Promise<number> => {
+  if (isPlaceholderClient()) return 5;
+
+  const { data } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'follow_up_context_limit')
+    .single();
+    
+  return data?.value ? parseInt(data.value, 10) : 5;
+};
+
+export const updateFollowUpContextLimit = async (limit: number): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  await supabase.rpc('update_config_value', {
+    key_name: 'follow_up_context_limit',
+    new_value: limit.toString()
   });
 };
 
@@ -426,6 +449,62 @@ export const deleteSubject = async (code: string): Promise<void> => {
     
   if (error) throw new Error(error.message);
 };
+
+// --- Levels Management ---
+
+export const fetchLevels = async (includeInactive = false): Promise<Level[]> => {
+  if (isPlaceholderClient()) return [];
+
+  let query = supabase
+    .from('levels')
+    .select('*')
+    .order('sort_order', { ascending: true });
+    
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching levels:', error);
+    return [];
+  }
+  return data || [];
+};
+
+export const addLevel = async (level: Partial<Level>): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('levels')
+    .insert([level]);
+
+  if (error) throw new Error(error.message);
+};
+
+export const updateLevel = async (code: string, updates: Partial<Level>): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  const { error } = await supabase
+    .from('levels')
+    .update(updates)
+    .eq('code', code);
+
+  if (error) throw new Error(error.message);
+};
+
+export const deleteLevel = async (code: string): Promise<void> => {
+  if (isPlaceholderClient()) return;
+  
+  const { error } = await supabase
+    .from('levels')
+    .delete()
+    .eq('code', code);
+    
+  if (error) throw new Error(error.message);
+};
+
 
 // --- Admin Features ---
 
