@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { solveMathProblem } from './services/api';
-import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage } from './services/supabase';
+import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage, fetchLevels } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea, { getIconComponent } from './components/InputArea';
 import Header from './components/Header';
@@ -12,7 +12,7 @@ import BackgroundEffects from './components/BackgroundEffects';
 import ImageAuthModal from './components/ImageAuthModal';
 import FollowUpView from './components/FollowUpView';
 import { BrainCircuit, BookOpen, PenTool, Languages, Search, X, MessageCircle } from 'lucide-react';
-import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData } from './types';
+import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData, Level } from './types';
 import { translations } from './utils/translations';
 
 interface SolutionItem {
@@ -38,8 +38,9 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('zh-cn');
   const [aiMode, setAiMode] = useState<AiMode>('solver');
   
-  // Dynamic Subjects State
+  // Dynamic Subjects & Levels State
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
   
   // Search State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -89,6 +90,9 @@ const App: React.FC = () => {
         
         const subs = await fetchSubjects();
         setSubjects(subs);
+        
+        const lvls = await fetchLevels();
+        setLevels(lvls);
 
         const usageSetting = await getShowUsageToUser();
         setShowUsage(usageSetting);
@@ -158,35 +162,28 @@ const App: React.FC = () => {
       );
     });
   }, [history, searchQuery, language]);
-
-  const getGradeLabel = (grade: string): string | undefined => {
-    if (!grade) return undefined;
-    const gradeMapZh: Record<string, string> = {
-      '1': '一年级', '2': '二年级', '3': '三年级',
-      '4': '四年级', '5': '五年级', '6': '六年级',
-      '7': '七年级', '8': '八年级', '9': '九年级'
-    };
-    const gradeMapEn: Record<string, string> = {
-      '1': 'Grade 1', '2': 'Grade 2', '3': 'Grade 3',
-      '4': 'Grade 4', '5': 'Grade 5', '6': 'Grade 6',
-      '7': 'Grade 7', '8': 'Grade 8', '9': 'Grade 9'
-    };
-    const map = language === 'en' ? gradeMapEn : gradeMapZh;
-    return map[grade] || undefined;
+  
+  // Helper to find label by code
+  const getLevelLabelByCode = (code: string): string | undefined => {
+    const lvl = levels.find(l => l.code === code);
+    return lvl ? lvl.label : undefined;
   };
 
-  const handleSolve = async (question: string, grade: string, subject: string, imageData?: string) => {
+  const handleSolve = async (question: string, gradeCode: string, subject: string, imageData?: string) => {
     setIsLoading(true);
     setCurrentQuestion(question || (imageData ? (language === 'en' ? 'Analyzing Image...' : '正在分析图片...') : ''));
     
     // Find prompt prefix for this subject
     const subjectConfig = subjects.find(s => s.code === subject);
     const customPrompt = subjectConfig?.prompt_prefix;
+    
+    // Resolve Level Label from Code
+    const levelLabel = getLevelLabelByCode(gradeCode);
 
     try {
       const answer = await solveMathProblem(
         question, 
-        grade, 
+        levelLabel, 
         subject, 
         userKey, 
         language, 
@@ -196,12 +193,10 @@ const App: React.FC = () => {
         customPrompt // Pass dynamic prompt
       );
       
-      const gradeLabel = getGradeLabel(grade);
-      
       const newItem: SolutionItem = {
         id: Date.now().toString(),
         question: question || (imageData ? (language === 'en' ? '[Image Upload]' : '[图片上传]') : ''),
-        gradeLabel: gradeLabel,
+        gradeLabel: levelLabel,
         subject: subject,
         answer: answer,
         timestamp: Date.now(),
@@ -211,7 +206,7 @@ const App: React.FC = () => {
 
       if (userKey && !isAdmin) {
         const textToSave = question || (imageData ? '[Image]' : '');
-        saveChatMessage(userKey, textToSave, answer, subject, gradeLabel).catch(console.error);
+        saveChatMessage(userKey, textToSave, answer, subject, levelLabel).catch(console.error);
         
         // Refresh usage if enabled
         if (showUsage) {
@@ -227,7 +222,7 @@ const App: React.FC = () => {
       const errorItem: SolutionItem = {
         id: Date.now().toString(),
         question: question,
-        gradeLabel: getGradeLabel(grade),
+        gradeLabel: levelLabel,
         subject: subject,
         answer: err instanceof Error ? `Error: ${err.message}` : "An unexpected error occurred.",
         timestamp: Date.now(),
@@ -406,6 +401,7 @@ const App: React.FC = () => {
               isImageAuthenticated={isImageAuthenticated}
               onRequestImageAuth={() => setShowImageAuthModal(true)}
               availableSubjects={subjects}
+              availableLevels={levels}
               showUsage={showUsage}
               keyUsage={keyUsage}
               imageKeyUsage={imageKeyUsage}
