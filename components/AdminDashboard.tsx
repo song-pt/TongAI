@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser, getFollowUpContextLimit, updateFollowUpContextLimit, fetchLevels, addLevel, updateLevel, deleteLevel } from '../services/supabase';
+import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser, getFollowUpContextLimit, updateFollowUpContextLimit, fetchLevels, addLevel, updateLevel, deleteLevel, getWebSearchEnabled, updateWebSearchEnabled } from '../services/supabase';
 import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey, Subject, Level } from '../types';
-import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu, MessageCircle, GraduationCap } from 'lucide-react';
+import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu, MessageCircle, GraduationCap, Globe } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -47,6 +47,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   
   // Feature Toggles
   const [showUsageToUser, setShowUsageToUser] = useState(false);
+  const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [followUpContextLimit, setFollowUpContextLimit] = useState<number>(5);
 
   const [savingSettings, setSavingSettings] = useState(false);
@@ -134,6 +135,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
         setAiVisionModel(provider.visionModel);
         const showUsage = await getShowUsageToUser();
         setShowUsageToUser(showUsage);
+        const webSearch = await getWebSearchEnabled();
+        setEnableWebSearch(webSearch);
         const contextLimit = await getFollowUpContextLimit();
         setFollowUpContextLimit(contextLimit);
       } else if (activeTab === 'subjects') {
@@ -315,6 +318,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       promises.push(updateAiMode(aiMode));
       promises.push(updateAiProviderConfig(aiApiKey.trim(), aiBaseUrl.trim(), aiTextModel.trim(), aiVisionModel.trim()));
       promises.push(updateShowUsageToUser(showUsageToUser)); 
+      promises.push(updateWebSearchEnabled(enableWebSearch));
       promises.push(updateFollowUpContextLimit(followUpContextLimit));
       await Promise.all(promises);
       alert(t.saveSuccess);
@@ -462,6 +466,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
       </header>
 
       <main className="max-w-6xl mx-auto p-6 space-y-8">
+        {/* ... (Existing tabs content unchanged until Settings) ... */}
         
         {activeTab === 'subjects' && (
            <div className="space-y-8">
@@ -649,6 +654,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                          </button>
                       </div>
 
+                      {/* NEW: Web Search Toggle */}
+                      <div className="flex items-center justify-between p-3 border rounded-xl bg-gray-50/50">
+                         <div>
+                            <span className="font-medium text-gray-800 text-sm flex items-center gap-2">
+                               <Globe className="w-4 h-4 text-gray-500" />
+                               {t.webSearchTitle}
+                            </span>
+                            <p className="text-xs text-gray-500 mt-1">{t.webSearchDesc}</p>
+                         </div>
+                         <button 
+                           type="button"
+                           onClick={() => setEnableWebSearch(!enableWebSearch)}
+                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enableWebSearch ? 'bg-purple-600' : 'bg-gray-200'}`}
+                         >
+                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enableWebSearch ? 'translate-x-6' : 'translate-x-1'}`} />
+                         </button>
+                      </div>
+
                       <div className="flex flex-col gap-2 p-3 border rounded-xl bg-gray-50/50">
                           <div>
                               <span className="font-medium text-gray-800 text-sm flex items-center gap-2">
@@ -671,6 +694,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                       </div>
                   </div>
 
+                  {/* ... (Rest of settings form remains same) ... */}
                   <div className="space-y-4 pt-4 border-t">
                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Server className="w-4 h-4 text-gray-500" /> {t.modelProviderTitle}</h3>
                      
@@ -718,7 +742,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
              )}
           </section>
         )}
-
+        
+        {/* ... (Existing keys/devices/modal logic remains identical, included in full rewrite for completeness) ... */}
         {(activeTab === 'keys' || activeTab === 'imageKeys') && (
           <>
             <section className="bg-white rounded-2xl shadow-sm border p-6">

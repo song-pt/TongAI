@@ -1,8 +1,7 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { solveMathProblem } from './services/api';
-import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage, fetchLevels } from './services/supabase';
+import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage, fetchLevels, getWebSearchEnabled } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea, { getIconComponent } from './components/InputArea';
 import Header from './components/Header';
@@ -41,6 +40,9 @@ const App: React.FC = () => {
   // Dynamic Subjects & Levels State
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
+  
+  // Feature Toggles
+  const [allowWebSearch, setAllowWebSearch] = useState(false);
   
   // Search State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -96,6 +98,9 @@ const App: React.FC = () => {
 
         const usageSetting = await getShowUsageToUser();
         setShowUsage(usageSetting);
+
+        const webSearch = await getWebSearchEnabled();
+        setAllowWebSearch(webSearch);
         
         // Ensure currentSubject is valid
         if (subs.length > 0 && !subs.find(s => s.code === currentSubject)) {
@@ -169,7 +174,7 @@ const App: React.FC = () => {
     return lvl ? lvl.label : undefined;
   };
 
-  const handleSolve = async (question: string, gradeCode: string, subject: string, imageData?: string) => {
+  const handleSolve = async (question: string, gradeCode: string, subject: string, imageData?: string, useSearch?: boolean) => {
     setIsLoading(true);
     setCurrentQuestion(question || (imageData ? (language === 'en' ? 'Analyzing Image...' : '正在分析图片...') : ''));
     
@@ -190,7 +195,8 @@ const App: React.FC = () => {
         aiMode, 
         imageData, 
         isImageAuthenticated ? imageKey : undefined,
-        customPrompt // Pass dynamic prompt
+        customPrompt, // Pass dynamic prompt
+        useSearch // Pass search flag
       );
       
       const newItem: SolutionItem = {
@@ -405,6 +411,7 @@ const App: React.FC = () => {
               showUsage={showUsage}
               keyUsage={keyUsage}
               imageKeyUsage={imageKeyUsage}
+              allowWebSearch={allowWebSearch}
             />
           </div>
         </div>

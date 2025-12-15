@@ -1,5 +1,4 @@
 
-
 import { SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, AI_MODEL, AI_VISION_MODEL, SYSTEM_PROMPT } from '../constants';
 import { prompts } from '../utils/translations';
 import { ApiResponse, ApiError, Language, AiMode, Message } from '../types';
@@ -14,7 +13,8 @@ export const solveMathProblem = async (
   aiMode: AiMode = 'solver',
   imageData?: string, // Base64 string of image
   imageKey?: string,   // Image access key code
-  customPromptPrefix?: string // NEW: Optional custom prefix from dynamic subject config
+  customPromptPrefix?: string, // NEW: Optional custom prefix from dynamic subject config
+  useSearch: boolean = false // NEW: Enable web search
 ): Promise<string> => {
   
   // 1. Fetch Dynamic Configuration
@@ -93,12 +93,17 @@ export const solveMathProblem = async (
     ];
   }
 
-  const body = {
+  const body: any = {
     model: modelToUse,
     messages: messages,
     stream: false,
     temperature: 0.7
   };
+  
+  // Add tools if search is enabled and we are not using vision (vision models often struggle with tools mixed in payload)
+  if (useSearch && !imageData) {
+    body.tools = [{ type: 'web_search' }];
+  }
 
   try {
     const response = await fetch(url, {

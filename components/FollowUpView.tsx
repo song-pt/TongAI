@@ -82,9 +82,9 @@ const FollowUpView: React.FC<FollowUpViewProps> = ({
   const SubjectIcon = getIconComponent(subjectConfig?.icon || 'book', "w-5 h-5");
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col h-[100dvh] animate-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
-      <header className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
+      <header className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-30">
         <button 
           onClick={onExit}
           className="flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 font-medium"
@@ -103,8 +103,8 @@ const FollowUpView: React.FC<FollowUpViewProps> = ({
       </header>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-32">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
+        <div className="max-w-3xl mx-auto space-y-6 pb-4">
           {messages.map((msg, index) => {
             const isUser = msg.role === 'user';
             // First two messages are the "Context"
@@ -150,12 +150,14 @@ const FollowUpView: React.FC<FollowUpViewProps> = ({
               </div>
             );
           })}
+          {/* Spacer to ensure last message is visible above input */}
+          <div className="h-6" />
           <div ref={bottomRef} />
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t">
+      <div className="flex-shrink-0 p-4 bg-white/80 backdrop-blur-md border-t z-20">
          <InputArea 
             onSend={handleSend}
             isLoading={isLoading}

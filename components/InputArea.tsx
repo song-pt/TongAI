@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, Loader2, GraduationCap, BookOpenText, Image as ImageIcon, X, 
   Calculator, PenTool, Languages, Atom, Globe, Music, Code, Palette, BookOpen, Infinity as InfinityIcon } from 'lucide-react';
@@ -7,7 +6,7 @@ import { translations } from '../utils/translations';
 import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData, Level } from '../types';
 
 interface InputAreaProps {
-  onSend: (message: string, grade: string, subject: string, imageData?: string) => void;
+  onSend: (message: string, grade: string, subject: string, imageData?: string, useSearch?: boolean) => void;
   isLoading: boolean;
   onSubjectChange?: (subject: string) => void;
   language: Language;
@@ -20,6 +19,7 @@ interface InputAreaProps {
   keyUsage?: KeyUsageData | null;
   imageKeyUsage?: ImageKeyUsageData | null;
   isFollowUp?: boolean; // New Prop for Simple Mode
+  allowWebSearch?: boolean; // NEW: Control visibility of search button
 }
 
 // Helper to map icon string to Component
@@ -51,7 +51,8 @@ const InputArea: React.FC<InputAreaProps> = ({
   showUsage,
   keyUsage,
   imageKeyUsage,
-  isFollowUp = false
+  isFollowUp = false,
+  allowWebSearch = false
 }) => {
   const [input, setInput] = useState('');
   const [grade, setGrade] = useState('');
@@ -60,7 +61,8 @@ const InputArea: React.FC<InputAreaProps> = ({
   const [subject, setSubject] = useState(availableSubjects.length > 0 ? availableSubjects[0].code : 'math');
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null); // Base64 string
-  
+  const [useSearch, setUseSearch] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[language];
@@ -82,9 +84,10 @@ const InputArea: React.FC<InputAreaProps> = ({
     e?.preventDefault();
     if ((input.trim() || selectedImage) && !isLoading) {
       const textToSend = input.trim() || (selectedImage ? (language === 'en' ? "Please solve this." : "请解答这张图片的内容。") : "");
-      onSend(textToSend, grade, subject, selectedImage || undefined);
+      onSend(textToSend, grade, subject, selectedImage || undefined, useSearch);
       setInput('');
       setSelectedImage(null);
+      // Don't reset search state, user might want to keep it on
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
@@ -121,6 +124,8 @@ const InputArea: React.FC<InputAreaProps> = ({
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setSelectedImage(base64String);
+        // Disable search if image is selected (API limitation usually)
+        setUseSearch(false);
       };
       reader.readAsDataURL(file);
     }
@@ -300,9 +305,9 @@ const InputArea: React.FC<InputAreaProps> = ({
             />
 
             {/* Image Upload Button & Usage Wrapper */}
-            <div className="flex flex-col items-center justify-end mb-2">
+            <div className="flex flex-col items-center justify-end mb-2 gap-1">
               {showUsage && isImageAuthenticated && imageKeyUsage && !isFollowUp && (
-                  <div className="mb-1 flex flex-col items-center animate-in fade-in slide-in-from-bottom-1 duration-300">
+                  <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-1 duration-300">
                       <span className="text-[9px] text-gray-400 font-mono leading-none mb-0.5">
                           {imageKeyUsage.total_images}/{imageKeyUsage.image_limit ?? <InfinityIcon className="w-2.5 h-2.5 inline align-middle"/>}
                       </span>
@@ -317,6 +322,26 @@ const InputArea: React.FC<InputAreaProps> = ({
                   </div>
               )}
               
+              {/* Web Search Button */}
+              {allowWebSearch && !isFollowUp && !selectedImage && (
+                  <button
+                    type="button"
+                    onClick={() => setUseSearch(!useSearch)}
+                    disabled={isLoading}
+                    className={`
+                      flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative
+                      ${isLoading ? 'opacity-50 cursor-not-allowed' : 
+                        useSearch ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-gray-400 hover:bg-gray-100 hover:text-blue-600'}
+                    `}
+                    title={t.enableSearch}
+                  >
+                    <Globe className="w-5 h-5" />
+                    {useSearch && (
+                      <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                    )}
+                  </button>
+              )}
+
               {!isFollowUp && (
                   <button
                     type="button"
@@ -364,6 +389,13 @@ const InputArea: React.FC<InputAreaProps> = ({
                 <X className="w-3 h-3" />
               </button>
             </div>
+          </div>
+        )}
+        
+        {/* Search Status Text */}
+        {useSearch && !selectedImage && (
+          <div className="px-3 pb-1 text-xs text-blue-600 font-medium flex items-center gap-1 animate-in fade-in">
+             <Globe className="w-3 h-3" /> {t.searchEnabled}
           </div>
         )}
 

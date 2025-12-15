@@ -1,5 +1,4 @@
 
-
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSWORD } from '../constants';
 import { AccessKey, DeviceSession, ChatHistoryItem, AiMode, ImageAccessKey, Subject, KeyUsageData, ImageKeyUsageData, Level } from '../types';
@@ -180,6 +179,31 @@ export const updateShowUsageToUser = async (show: boolean): Promise<void> => {
   await supabase.rpc('update_config_value', {
     key_name: 'show_usage_to_user',
     new_value: show.toString()
+  });
+};
+
+// --- Web Search Settings ---
+
+// Get Web Search Setting
+export const getWebSearchEnabled = async (): Promise<boolean> => {
+  if (isPlaceholderClient()) return false;
+
+  const { data } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'enable_web_search')
+    .single();
+  
+  return data?.value === 'true';
+};
+
+// Update Web Search Setting
+export const updateWebSearchEnabled = async (enabled: boolean): Promise<void> => {
+  if (isPlaceholderClient()) return;
+
+  await supabase.rpc('update_config_value', {
+    key_name: 'enable_web_search',
+    new_value: enabled.toString()
   });
 };
 

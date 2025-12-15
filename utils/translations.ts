@@ -40,9 +40,11 @@ export const translations = {
     placeholderChinese: '请输入语文题目或文本...',
     placeholderEnglish: '请输入英语题目或文本...',
     placeholderDefault: '请输入题目...',
+    enableSearch: '联网搜索',
+    searchEnabled: '已开启联网',
     
     // Admin Dashboard
-    adminTitle: '管理员菜单', // Updated
+    adminTitle: '管理员菜单', 
     tabKeys: '密钥列表',
     tabDevices: '设备监控',
     tabSettings: '系统设置',
@@ -118,6 +120,8 @@ export const translations = {
     userFeaturesTitle: '用户端功能开关 (Features)',
     showUsageTitle: '显示用量 (Show Usage)',
     showUsageDesc: '允许用户在输入框下方看到自己的 Token 使用情况和额度上限。',
+    webSearchTitle: '允许联网搜索 (Web Search)',
+    webSearchDesc: '开启后，用户界面将显示“联网”按钮。注意：这需要您的 API 提供商支持联网工具（如 web_search tool）。',
     contextLimitTitle: '追问上下文长度 (Context Limit)',
     contextLimitDesc: '设置用户在“追问”模式下，AI 能记住的历史对话数量。',
     modelProviderTitle: '模型服务商设置 (Model Provider)',
@@ -203,6 +207,8 @@ export const translations = {
     placeholderChinese: '請輸入語文題目或文本...',
     placeholderEnglish: '請輸入英語題目或文本...',
     placeholderDefault: '請輸入題目...',
+    enableSearch: '聯網搜索',
+    searchEnabled: '已開啟聯網',
     
     // Admin Dashboard
     adminTitle: '管理員菜單',
@@ -281,6 +287,8 @@ export const translations = {
     userFeaturesTitle: '用戶端功能開關 (Features)',
     showUsageTitle: '顯示用量 (Show Usage)',
     showUsageDesc: '允許用戶在輸入框下方看到自己的 Token 使用情況和額度上限。',
+    webSearchTitle: '允許聯網搜索 (Web Search)',
+    webSearchDesc: '開啟後，用戶界面將顯示「聯網」按鈕。注意：這需要您的 API 提供商支持聯網工具（如 web_search tool）。',
     contextLimitTitle: '追問上下文長度 (Context Limit)',
     contextLimitDesc: '設置用戶在「追問」模式下，AI 能記住的歷史對話數量。',
     modelProviderTitle: '模型服務商設置 (Model Provider)',
@@ -366,6 +374,8 @@ export const translations = {
     placeholderChinese: 'Enter text or question...',
     placeholderEnglish: 'Enter text or question...',
     placeholderDefault: 'Enter problem...',
+    enableSearch: 'Web Search',
+    searchEnabled: 'Search On',
     
     // Admin Dashboard
     adminTitle: 'Admin Menu',
@@ -444,6 +454,8 @@ export const translations = {
     userFeaturesTitle: 'User Features',
     showUsageTitle: 'Show Usage',
     showUsageDesc: 'Show token usage and limits under the input area.',
+    webSearchTitle: 'Allow Web Search',
+    webSearchDesc: 'Adds a toggle for users to enable web search. Requires API provider support (web_search tool).',
     contextLimitTitle: 'Follow-up Context Limit',
     contextLimitDesc: 'History message count retained in follow-up mode.',
     modelProviderTitle: 'Model Provider Settings',
