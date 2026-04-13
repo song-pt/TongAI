@@ -311,6 +311,82 @@ begin
 end;
 $$;
 
+-- 16. [NEW] 合并处理函数 (保存消息 + 增加计数 + 获取最新状态)
+create or replace function add_chat_message_v2(
+  p_key_code text,
+  p_question text,
+  p_answer text,
+  p_subject text,
+  p_grade_label text,
+  p_device_id text,
+  p_token_usage int,
+  p_image_key_code text default null
+)
+returns json
+language plpgsql
+security definer
+as $$
+declare
+  v_total_tokens bigint;
+  v_token_limit bigint;
+  v_total_images bigint;
+  v_image_limit bigint;
+  v_key_active boolean;
+  v_img_key_active boolean;
+begin
+  -- 1. 插入消息
+  insert into chat_history (key_code, question, answer, subject, grade_label, device_id)
+  values (p_key_code, p_question, p_answer, p_subject, p_grade_label, p_device_id);
+
+  -- 2. 保留策略：每个 Key 只留 50 条
+  delete from chat_history
+  where id in (
+    select id from chat_history
+    where key_code = p_key_code
+    order by created_at desc
+    offset 50
+  );
+
+  -- 3. 增加 Token 使用量
+  update access_keys 
+  set total_tokens = total_tokens + p_token_usage 
+  where code = p_key_code
+  returning total_tokens, token_limit, is_active into v_total_tokens, v_token_limit, v_key_active;
+
+  -- 4. 更新设备会话统计
+  update device_sessions 
+  set total_tokens = total_tokens + p_token_usage 
+  where key_code = p_key_code and device_id = p_device_id;
+
+  -- 5. 检查额度熔断
+  if v_token_limit is not null and v_total_tokens >= v_token_limit then
+    update access_keys set is_active = false where code = p_key_code;
+    v_key_active := false;
+  end if;
+
+  -- 6. 如果有图片密钥，增加图片使用计数
+  if p_image_key_code is not null then
+    update image_access_keys 
+    set total_images = total_images + 1
+    where code = p_image_key_code
+    returning total_images, image_limit, is_active into v_total_images, v_image_limit, v_img_key_active;
+
+    if v_image_limit is not null and v_total_images >= v_image_limit then
+      update image_access_keys set is_active = false where code = p_image_key_code;
+      v_img_key_active := false;
+    end if;
+  end if;
+
+  -- 7. 返回最新状态给前端，减少后续查询
+  return json_build_object(
+    'key_usage', json_build_object('total_tokens', v_total_tokens, 'token_limit', v_token_limit, 'is_active', v_key_active),
+    'image_usage', case when p_image_key_code is not null 
+      then json_build_object('total_images', v_total_images, 'image_limit', v_image_limit, 'is_active', v_img_key_active)
+      else null end
+  );
+end;
+$$;
+
 -- 8. [BUG FIX] 创建配置更新函数 (绕过RLS限制)
 create or replace function update_config_value(key_name text, new_value text)
 returns void

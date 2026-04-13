@@ -39,7 +39,7 @@ export const getDeviceId = (): string => {
   const cookieMatch = document.cookie.match(new RegExp('(^| )' + STORAGE_KEY + '=([^;]+)'));
   let deviceId = cookieMatch ? cookieMatch[2] : null;
 
-  // 2. If cookie missing, try LocalStorage
+  // 2. If both missing, try LocalStorage
   if (!deviceId) {
     deviceId = localStorage.getItem(STORAGE_KEY);
   }
@@ -65,6 +65,17 @@ export const getDeviceId = (): string => {
   return deviceId;
 };
 
+// Helper to simplify User Agent to save space
+const getSimplifiedUserAgent = (): string => {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return 'Android';
+  if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
+  if (/Windows/i.test(ua)) return 'Windows';
+  if (/Macintosh/i.test(ua)) return 'macOS';
+  if (/Linux/i.test(ua)) return 'Linux';
+  return 'Unknown';
+};
+
 // User Login: Verify key and log session via RPC
 export const loginUser = async (code: string, location?: string): Promise<boolean> => {
   if (isPlaceholderClient()) {
@@ -73,7 +84,7 @@ export const loginUser = async (code: string, location?: string): Promise<boolea
   }
 
   const deviceId = getDeviceId();
-  const userAgent = navigator.userAgent; // Get browser info
+  const userAgent = getSimplifiedUserAgent(); // Simplified UA
   
   const { data, error } = await supabase.rpc('login_with_key', {
     input_code: code,
@@ -232,21 +243,55 @@ export const updateFollowUpContextLimit = async (limit: number): Promise<void> =
 
 // --- History Sync Features ---
 
-export const fetchChatHistory = async (code: string): Promise<ChatHistoryItem[]> => {
+export const fetchChatHistory = async (code: string, page = 0, pageSize = 20): Promise<ChatHistoryItem[]> => {
   if (isPlaceholderClient()) return [];
+
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
 
   const { data, error } = await supabase
     .from('chat_history')
     .select('*')
     .eq('key_code', code)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   if (error) {
     console.error('Error fetching history:', error);
     return [];
   }
   return data || [];
+};
+
+export const saveChatMessageMerged = async (
+  code: string, 
+  question: string, 
+  answer: string, 
+  subject: string, 
+  tokenUsage: number,
+  gradeLabel?: string,
+  imageKeyCode?: string
+): Promise<{key_usage: KeyUsageData, image_usage: ImageKeyUsageData | null} | null> => {
+  if (isPlaceholderClient()) return null;
+
+  const deviceId = getDeviceId();
+  
+  const { data, error } = await supabase.rpc('add_chat_message_v2', {
+    p_key_code: code,
+    p_question: question,
+    p_answer: answer,
+    p_subject: subject,
+    p_grade_label: gradeLabel || null,
+    p_device_id: deviceId,
+    p_token_usage: tokenUsage,
+    p_image_key_code: imageKeyCode || null
+  });
+
+  if (error) {
+    console.error('Error saving message merged:', error);
+    return null;
+  }
+  return data;
 };
 
 export const saveChatMessage = async (

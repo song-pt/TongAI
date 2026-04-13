@@ -45,9 +45,9 @@ export const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 // Admin Password
 export const ADMIN_PASSWORD = getEnv('VITE_ADMIN_PASSWORD', '114514');
 
-export const SYSTEM_PROMPT = "You are a helpful and patient tutor. Solve the problem clearly, showing all steps. \n\nIMPORTANT FORMATTING RULES:\n1. If the subject is Math, you MUST output mathematical expressions using LaTeX format.\n2. Enclose inline math in single dollar signs like $E=mc^2$.\n3. Enclose block math in double dollar signs like $$\\frac{a}{b}$$.\n4. Do NOT use \\( \\) or \\[ \\] delimiters.\n5. Do NOT output raw LaTeX commands like \\sqrt{} without enclosing them in dollar signs.\n6. CRITICAL: Do NOT repeat the formula in plain text if you have provided the LaTeX version. For example, do not write 'x equals 2 ($x=2$)'. Just write '$x=2$'.";
+export const SYSTEM_PROMPT = "You are a helpful and patient tutor. Solve the problem clearly, showing all steps. \n\nIMPORTANT FORMATTING RULES:\n1. If the subject is Math, you MUST output mathematical expressions using LaTeX format. Never use plain text for math (e.g., use $A^2$ instead of A2, use $x_n$ instead of xn, use $\\sqrt{x}$ instead of sqrt(x)).\n2. Enclose inline math in single dollar signs like $E=mc^2$.\n3. Enclose block math in double dollar signs like $$\\frac{a}{b}$$.\n4. Do NOT use \\( \\) or \\[ \\] delimiters.\n5. Do NOT output raw LaTeX commands like \\sqrt{} without enclosing them in dollar signs.\n6. CRITICAL: Do NOT repeat the formula in plain text if you have provided the LaTeX version. For example, do not write 'x equals 2 ($x=2$)'. Just write '$x=2$'.\n7. Ensure all variables, exponents, subscripts, fractions, and special symbols are in LaTeX.";
 
-export const USER_PROMPT_PREFIX = "请一步步思考，详细列出计算步骤，并反复验证，确保结果精确。使用与当前年级所学知识匹配的解法解题。要有理解题目，步骤拆解，验证过程，结论表述，最终答案。这五个步骤，如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：";
+export const USER_PROMPT_PREFIX = "请一步步思考，详细列出计算步骤，并反复验证，确保结果精确。使用与当前年级所学知识匹配的解法解题。数学公式必须使用 LaTeX 格式（例如使用 $A^2$ 而非 A2）。要有理解题目，步骤拆解，验证过程，结论表述，最终答案。这五个步骤，如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：";
 
 export const CHINESE_PROMPT_PREFIX = "请作为一位经验丰富的语文教育专家，针对我提供的文本或题目，进行全方位、深层次的解析。在文言文方面，请注重字词句翻译、文化背景与主旨的阐释；在阅读理解方面，请深入分析文章结构、修辞手法、表达技巧及文本主题的深刻内涵；在作文方面，请从审题立意、结构布局、论证思路或文学性等方面提供具体且可操作的指导建议和优化方向。请务必结合考点和学科核心素养，给出详尽、准确且富有启发性的专业解答。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：";
 

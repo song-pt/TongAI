@@ -15,16 +15,16 @@ export const solveMathProblem = async (
   imageKey?: string,   // Image access key code
   customPromptPrefix?: string, // NEW: Optional custom prefix from dynamic subject config
   useSearch: boolean = false // NEW: Enable web search
-): Promise<string> => {
+): Promise<{answer: string, tokens: number}> => {
   
   // 1. Fetch Dynamic Configuration
   const providerConfig = await getAiProviderConfig();
   
   // 2. Resolve API Config (DB Priority > Constant Fallback)
-  const baseUrl = providerConfig.baseUrl || SILICONFLOW_BASE_URL;
-  const apiKey = providerConfig.apiKey || SILICONFLOW_API_KEY;
-  const textModel = providerConfig.textModel || AI_MODEL;
-  const visionModel = providerConfig.visionModel || AI_VISION_MODEL;
+  const baseUrl = (providerConfig.baseUrl && providerConfig.baseUrl.trim() !== '') ? providerConfig.baseUrl : SILICONFLOW_BASE_URL;
+  const apiKey = (providerConfig.apiKey && providerConfig.apiKey.trim() !== '') ? providerConfig.apiKey : SILICONFLOW_API_KEY;
+  const textModel = (providerConfig.textModel && providerConfig.textModel.trim() !== '') ? providerConfig.textModel : AI_MODEL;
+  const visionModel = (providerConfig.visionModel && providerConfig.visionModel.trim() !== '') ? providerConfig.visionModel : AI_VISION_MODEL;
 
   const url = `${baseUrl}/chat/completions`;
   
@@ -120,24 +120,13 @@ export const solveMathProblem = async (
     const data = await response.json() as ApiResponse;
     
     if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+      const content = data.choices[0].message.content;
+      const totalTokens = data.usage?.total_tokens || Math.ceil((promptContent.length + content.length) / 3);
       
-      // 1. Track Token Usage (Main Key)
-      if (accessKey) {
-         if (data.usage?.total_tokens) {
-           recordTokenUsage(accessKey, data.usage.total_tokens).catch(console.error);
-         } else {
-           // Fallback estimation
-           const estimated = Math.ceil((promptContent.length + data.choices[0].message.content.length) / 3);
-           recordTokenUsage(accessKey, estimated).catch(console.error);
-         }
-      }
-
-      // 2. Track Image Usage (Image Key)
-      if (imageData && imageKey) {
-        recordImageUsage(imageKey).catch(console.error);
-      }
-
-      return data.choices[0].message.content;
+      return {
+        answer: content,
+        tokens: totalTokens
+      };
     } else {
       throw new Error("Invalid response format from AI service.");
     }
@@ -153,13 +142,13 @@ export const continueConversation = async (
   currentMessages: Message[],
   newMessage: string,
   accessKey?: string
-): Promise<string> => {
+): Promise<{answer: string, tokens: number}> => {
   const providerConfig = await getAiProviderConfig();
   const contextLimit = await getFollowUpContextLimit();
   
-  const baseUrl = providerConfig.baseUrl || SILICONFLOW_BASE_URL;
-  const apiKey = providerConfig.apiKey || SILICONFLOW_API_KEY;
-  const textModel = providerConfig.textModel || AI_MODEL;
+  const baseUrl = (providerConfig.baseUrl && providerConfig.baseUrl.trim() !== '') ? providerConfig.baseUrl : SILICONFLOW_BASE_URL;
+  const apiKey = (providerConfig.apiKey && providerConfig.apiKey.trim() !== '') ? providerConfig.apiKey : SILICONFLOW_API_KEY;
+  const textModel = (providerConfig.textModel && providerConfig.textModel.trim() !== '') ? providerConfig.textModel : AI_MODEL;
 
   const url = `${baseUrl}/chat/completions`;
   const headers = {
@@ -202,15 +191,13 @@ export const continueConversation = async (
     const data = await response.json() as ApiResponse;
 
     if (data.choices && data.choices.length > 0 && data.choices[0].message) {
-      if (accessKey) {
-        if (data.usage?.total_tokens) {
-          recordTokenUsage(accessKey, data.usage.total_tokens).catch(console.error);
-        } else {
-           const estimated = Math.ceil((newMessage.length + data.choices[0].message.content.length) / 3);
-           recordTokenUsage(accessKey, estimated).catch(console.error);
-        }
-      }
-      return data.choices[0].message.content;
+      const content = data.choices[0].message.content;
+      const totalTokens = data.usage?.total_tokens || Math.ceil((newMessage.length + content.length) / 3);
+      
+      return {
+        answer: content,
+        tokens: totalTokens
+      };
     } else {
       throw new Error("Invalid response format from AI service.");
     }

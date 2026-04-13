@@ -1,3 +1,6 @@
+/* Import KaTeX CSS */
+@import "katex/dist/katex.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -31,30 +34,6 @@
   overflow-y: hidden;
   padding-bottom: 4px;
   margin: 1em 0;
-}
-
-/* Hide MathML output to prevent double rendering */
-.katex-mathml {
-  display: none !important;
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(1px, 1px, 1px, 1px);
-}
-
-/* Fix weird square root lines in Tailwind */
-.katex * {
-  border-color: currentColor;
-}
-.katex svg {
-  overflow: visible !important;
-  display: block;
-}
-.katex svg path {
-  stroke: currentColor;
-  fill: currentColor;
-  stroke-width: 1.5px;
 }
 
 /* Ensure text doesn't overflow in messages */

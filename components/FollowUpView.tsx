@@ -55,12 +55,12 @@ const FollowUpView: React.FC<FollowUpViewProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await continueConversation(messages, text, userKey);
+      const { answer } = await continueConversation(messages, text, userKey);
       
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response,
+        content: answer,
         timestamp: Date.now() + 1
       };
       setMessages(prev => [...prev, aiMsg]);

@@ -31,6 +31,11 @@ const Header: React.FC<HeaderProps> = ({ title, language, onLanguageChange, onSe
         </div>
         
         <div className="flex items-center gap-4">
+           {/* Disclaimer */}
+           <span className="text-[10px] sm:text-xs text-gray-400 hidden sm:block select-none">
+             AI可能出错，建议二次核查
+           </span>
+
            {/* Search Button */}
            <button 
              onClick={onSearchClick}

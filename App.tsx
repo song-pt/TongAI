@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { solveMathProblem } from './services/api';
-import { fetchChatHistory, saveChatMessage, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage, fetchLevels, getWebSearchEnabled } from './services/supabase';
+import { fetchChatHistory, saveChatMessageMerged, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage, fetchLevels, getWebSearchEnabled } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea, { getIconComponent } from './components/InputArea';
 import Header from './components/Header';
@@ -10,7 +10,7 @@ import AdminDashboard from './components/AdminDashboard';
 import BackgroundEffects from './components/BackgroundEffects';
 import ImageAuthModal from './components/ImageAuthModal';
 import FollowUpView from './components/FollowUpView';
-import { BrainCircuit, BookOpen, PenTool, Languages, Search, X, MessageCircle } from 'lucide-react';
+import { BrainCircuit, BookOpen, PenTool, Languages, Search, X, MessageCircle, ArrowUp, Loader2 } from 'lucide-react';
 import { Language, AiMode, Subject, KeyUsageData, ImageKeyUsageData, Level } from './types';
 import { translations } from './utils/translations';
 
@@ -47,6 +47,11 @@ const App: React.FC = () => {
   // Search State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Pagination & Cache State
+  const [historyPage, setHistoryPage] = useState(0);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [isLoadMoreLoading, setIsLoadMoreLoading] = useState(false);
 
   // Image Auth State
   const [isImageAuthenticated, setIsImageAuthenticated] = useState(false);
@@ -127,13 +132,24 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated, isAdmin, isImageAuthenticated, imageKey, showUsage]);
 
-  // Load history from cloud when user logs in
+  // Load history from cloud or cache when user logs in
   useEffect(() => {
     if (isAuthenticated && !isAdmin && userKey) {
       const loadHistory = async () => {
+        // 1. Try to load from LocalStorage Cache first
+        const cacheKey = `history_cache_${userKey}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            setHistory(JSON.parse(cached));
+          } catch (e) {
+            console.error("Failed to parse history cache");
+          }
+        }
+
         setIsHistoryLoading(true);
         try {
-          const cloudHistory = await fetchChatHistory(userKey);
+          const cloudHistory = await fetchChatHistory(userKey, 0, 20);
           const formattedHistory: SolutionItem[] = cloudHistory.map(item => ({
             id: item.id,
             question: item.question,
@@ -142,7 +158,13 @@ const App: React.FC = () => {
             answer: item.answer,
             timestamp: new Date(item.created_at).getTime()
           }));
+          
           setHistory(formattedHistory);
+          setHistoryPage(0);
+          setHasMoreHistory(cloudHistory.length === 20);
+          
+          // Update Cache
+          localStorage.setItem(cacheKey, JSON.stringify(formattedHistory));
         } catch (error) {
           console.error("Failed to load history", error);
         } finally {
@@ -152,6 +174,38 @@ const App: React.FC = () => {
       loadHistory();
     }
   }, [isAuthenticated, isAdmin, userKey]);
+
+  const handleLoadMore = async () => {
+    if (!userKey || isLoadMoreLoading || !hasMoreHistory) return;
+    
+    setIsLoadMoreLoading(true);
+    const nextPage = historyPage + 1;
+    
+    try {
+      const cloudHistory = await fetchChatHistory(userKey, nextPage, 20);
+      if (cloudHistory.length === 0) {
+        setHasMoreHistory(false);
+        return;
+      }
+      
+      const formattedHistory: SolutionItem[] = cloudHistory.map(item => ({
+        id: item.id,
+        question: item.question,
+        gradeLabel: item.grade_label || undefined, 
+        subject: item.subject,
+        answer: item.answer,
+        timestamp: new Date(item.created_at).getTime()
+      }));
+      
+      setHistory(prev => [...prev, ...formattedHistory]);
+      setHistoryPage(nextPage);
+      setHasMoreHistory(cloudHistory.length === 20);
+    } catch (error) {
+      console.error("Failed to load more history", error);
+    } finally {
+      setIsLoadMoreLoading(false);
+    }
+  };
 
   // Filter History Logic
   const filteredHistory = useMemo(() => {
@@ -186,7 +240,7 @@ const App: React.FC = () => {
     const levelLabel = getLevelLabelByCode(gradeCode);
 
     try {
-      const answer = await solveMathProblem(
+      const { answer, tokens } = await solveMathProblem(
         question, 
         levelLabel, 
         subject, 
@@ -208,20 +262,36 @@ const App: React.FC = () => {
         timestamp: Date.now(),
       };
 
-      setHistory((prev) => [newItem, ...prev].slice(0, 50));
+      setHistory((prev) => {
+        const updated = [newItem, ...prev].slice(0, 50);
+        // Sync to cache
+        if (userKey) {
+          localStorage.setItem(`history_cache_${userKey}`, JSON.stringify(updated));
+        }
+        return updated;
+      });
 
       if (userKey && !isAdmin) {
-        const textToSave = question || (imageData ? '[Image]' : '');
-        saveChatMessage(userKey, textToSave, answer, subject, levelLabel).catch(console.error);
-        
-        // Refresh usage if enabled
-        if (showUsage) {
-           setTimeout(() => getKeyUsage(userKey).then(setKeyUsage).catch(console.error), 1000);
-           // Refresh Image Usage if applicable
-           if (isImageAuthenticated && imageKey) {
-             setTimeout(() => getImageKeyUsage(imageKey).then(setImageKeyUsage).catch(console.error), 1000);
+        // Ensure we only save text to Supabase, never the raw image data.
+        const textToSave = (question && !question.startsWith('data:image')) 
+          ? question 
+          : (imageData ? (language === 'en' ? '[Image]' : '[图片]') : '');
+
+        // Merged Request: Save message + Increment tokens + Increment image usage + Get updated usage
+        saveChatMessageMerged(
+          userKey, 
+          textToSave, 
+          answer, 
+          subject, 
+          tokens, 
+          levelLabel, 
+          isImageAuthenticated ? imageKey : undefined
+        ).then(usageData => {
+           if (usageData) {
+             if (usageData.key_usage) setKeyUsage(usageData.key_usage);
+             if (usageData.image_usage) setImageKeyUsage(usageData.image_usage);
            }
-        }
+        }).catch(console.error);
       }
 
     } catch (err) {
@@ -502,6 +572,24 @@ const App: React.FC = () => {
               </React.Fragment>
             );
           })}
+
+          {/* Load More Button */}
+          {!searchQuery && hasMoreHistory && history.length > 0 && (
+            <div className="mt-8 mb-12 flex justify-center">
+              <button
+                onClick={handleLoadMore}
+                disabled={isLoadMoreLoading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm text-gray-600 font-medium hover:bg-gray-50 hover:border-indigo-200 transition-all disabled:opacity-50"
+              >
+                {isLoadMoreLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="w-4 h-4 rotate-180" />
+                )}
+                {isLoadMoreLoading ? t.loading : (language === 'en' ? 'Load More History' : '加载更多历史记录')}
+              </button>
+            </div>
+          )}
         </div>
       </main>
 

@@ -31,7 +31,7 @@ const MathRenderer: React.FC<MathRendererProps> = ({ content }) => {
         remarkPlugins={[remarkMath]}
         // Configure rehypeKatex to output 'html' only. 
         // Default is 'htmlAndMathml', which can cause duplicate rendering if the browser renders MathML visibly alongside the KaTeX HTML.
-        rehypePlugins={[[rehypeKatex, { output: 'html' }]] as any}
+        rehypePlugins={[[rehypeKatex, { output: 'html', strict: false }]] as any}
         components={{
           // Override paragraph to handle math blocks better. We rename unused 'node' to '_node'.
           p: ({ node: _node, ...props }) => <p className="mb-4 text-gray-800 dark:text-gray-200" {...props} />,
