@@ -28,6 +28,9 @@ When deploying to Vercel, you must set the following environment variables in **
 
 Once this is done, your system is fully operational!
 
+## 3. Vercel Deployment Note
+This project is pre-configured for Vercel. Added `api/chat.ts` and `vercel.json` to handle backend proxying automatically on Vercel's edge.
+
 ---
 ### TongAI 是一个AI全栈平台。它集成了大模型进行多学科（数/语/英）的辅导，也提供了一套完整的后台管理系统。同时提供了便捷的密钥分发，用量管理，自动熔断功能。我只是一个学生，有任何问题我都希望大家能积极提出，帮助我做的更好！谢谢！
 
