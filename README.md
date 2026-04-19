@@ -1,5 +1,5 @@
 
-###First of all, I want to make it clear that this project is mostly written by GoogleAiStudio, and I am only responsible for fixing bugs.
+### First of all, I want to make it clear that this project is mostly written by GoogleAiStudio, and I am only responsible for fixing bugs.
 
 ### TongAI is a full-stack AI platform. It integrates large models for multi-disciplinary tutoring and provides a complete backend management system. It also offers convenient key distribution, usage management, and automatic circuit breaker functionality. I'm just a student, and I welcome any questions you may have to help me improve! Thank you!
 
@@ -34,7 +34,7 @@ Once this is done, your system is fully operational!
 This project is pre-configured for Vercel. Added `api/chat.ts` and `vercel.json` to handle backend proxying automatically on Vercel's edge.
 
 ---
-##首先声明，这个项目大多都是 AI 写的，我基本只负责改 BUG
+## 首先声明，这个项目大多都是 AI 写的，我基本只负责改 BUG
 
 ### TongAI 是一个AI全栈平台。它集成了大模型进行多学科的辅导，也提供了一套完整的后台管理系统。同时提供了便捷的密钥分发，用量管理，自动熔断功能。我只是一个学生，有任何问题我都希望大家能积极提出，帮助我做的更好！谢谢！
 
