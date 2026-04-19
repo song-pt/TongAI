@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { fetchKeys, fetchDevices, addKey, toggleKeyStatus, deleteKey, toggleDeviceBan, fetchAdminHistory, updateKeyLimit, getAppTitle, updateAppTitle, updateAdminPassword, getAiMode, updateAiMode, fetchImageKeys, addImageKey, toggleImageKeyStatus, updateImageKeyLimit, deleteImageKey, fetchSubjects, addSubject, updateSubject, deleteSubject, getAppLogo, updateAppLogo, getAiProviderConfig, updateAiProviderConfig, getShowUsageToUser, updateShowUsageToUser, getFollowUpContextLimit, updateFollowUpContextLimit, fetchLevels, addLevel, updateLevel, deleteLevel, getWebSearchEnabled, updateWebSearchEnabled } from '../services/supabase';
 import { AccessKey, DeviceSession, ChatHistoryItem, Language, AiMode, ImageAccessKey, Subject, Level } from '../types';
-import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu, MessageCircle, GraduationCap, Globe } from 'lucide-react';
+import { Plus, Power, Trash2, Smartphone, Loader2, LogOut, Key, Laptop, Clock, Coins, Ban, CheckCircle, MessageSquare, X, Gauge, AlertTriangle, Infinity as InfinityIcon, Settings, Save, Lock, Bot, Image as ImageIcon, Palette, Edit3, Upload, MapPin, Server, Sparkles, Eye, EyeOff, Cpu, MessageCircle, GraduationCap, Globe, ArrowLeft } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { translations } from '../utils/translations';
@@ -12,9 +12,10 @@ interface AdminDashboardProps {
   onLogout: () => void;
   language: Language;
   onLanguageChange: (lang: Language) => void;
+  onBack?: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onLanguageChange }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onLanguageChange, onBack }) => {
   const [activeTab, setActiveTab] = useState<'keys' | 'devices' | 'settings' | 'imageKeys' | 'subjects' | 'levels'>('keys');
   
   // Data State
@@ -105,58 +106,67 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log(`[AdminDashboard] Loading content for tab: ${activeTab}`);
       if (activeTab === 'keys') {
         const data = await fetchKeys();
         setKeys(data);
       } else if (activeTab === 'imageKeys') {
         try {
-          const data = await fetchImageKeys();
-          setImageKeys(data);
+          const [imgs, dev] = await Promise.all([
+            fetchImageKeys(),
+            fetchDevices()
+          ]);
+          setImageKeys(imgs);
+          setDevices(dev);
         } catch (e: any) {
-           if (e.message && e.message.includes('image_access_keys')) {
+           if (e.message && (e.message.includes('image_access_keys') || e.message.includes('relation "public.image_access_keys" does not exist'))) {
              throw new Error("DB_MISSING_IMAGE_TABLE");
            }
            throw e;
         }
-        const dev = await fetchDevices();
-        setDevices(dev);
       } else if (activeTab === 'devices') {
         const data = await fetchDevices();
         setDevices(data);
       } else if (activeTab === 'settings') {
-        const title = await getAppTitle();
+        const [title, mode, provider, showUsage, webSearch, contextLimit] = await Promise.all([
+          getAppTitle(),
+          getAiMode(),
+          getAiProviderConfig(),
+          getShowUsageToUser(),
+          getWebSearchEnabled(),
+          getFollowUpContextLimit()
+        ]);
         setAppTitle(title);
-        const mode = await getAiMode();
         setAiMode(mode);
-        const provider = await getAiProviderConfig();
         setAiApiKey(provider.apiKey);
         setAiBaseUrl(provider.baseUrl);
         setAiTextModel(provider.textModel);
         setAiVisionModel(provider.visionModel);
-        const showUsage = await getShowUsageToUser();
         setShowUsageToUser(showUsage);
-        const webSearch = await getWebSearchEnabled();
         setEnableWebSearch(webSearch);
-        const contextLimit = await getFollowUpContextLimit();
         setFollowUpContextLimit(contextLimit);
       } else if (activeTab === 'subjects') {
-        const subs = await fetchSubjects(true);
+        const [subs, logo] = await Promise.all([
+          fetchSubjects(true),
+          getAppLogo()
+        ]);
         setSubjects(subs);
-        const logo = await getAppLogo();
         setAppLogo(logo);
       } else if (activeTab === 'levels') {
         const lvls = await fetchLevels(true);
         setLevels(lvls);
       }
     } catch (error: any) {
-      console.error("Dashboard Load Error:", error);
-      const msg = error.message || "Unknown error";
+      console.error("[AdminDashboard] Dashboard Load Error:", error);
+      const msg = error.message || String(error) || "Unknown error";
       
-      if (msg === "DB_MISSING_IMAGE_TABLE" || msg.includes('relation "public.image_access_keys" does not exist') || msg.includes('relation "public.levels" does not exist')) {
-         setSqlToRun(`Please run the SQL script in supabase_schema.txt`);
-         setDbErrorModal(true);
+      if (msg === "DB_MISSING_IMAGE_TABLE" || msg.includes('image_access_keys') || msg.includes('levels')) {
+          setSqlToRun(`Please ensure you have executed the full SQL script in supabase_schema.txt`);
+          setDbErrorModal(true);
       } else {
-         alert(`加载数据失败: ${msg}\n请检查数据库连接或 RLS 策略。`);
+          // Check for connectivity vs permissions
+          const isFetchError = msg.includes('fetch');
+          alert(`加载数据失败: ${msg}\n\n${isFetchError ? '提示：检测到网络请求失败（Failed to Fetch）。请检查您的 Supabase 数据库连接是否正常，或该项目是否已被暂停（Paused）。' : '提示：请检查您的 RLS 策略或数据库表结构。'}`);
       }
     } finally {
       setLoading(false);
@@ -165,6 +175,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   useEffect(() => {
@@ -358,20 +369,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     if (!subjectForm.code || !subjectForm.label) return;
     setIsSubmitting(true);
     try {
-      if (isEditingSubject) {
-        const updates = { ...subjectForm };
-        delete (updates as any).code;
-        delete (updates as any).created_at;
+      // Create a clean copy of the data to avoid sending system or undefined fields
+      const dataToSave = {
+        label: subjectForm.label,
+        color: subjectForm.color || 'indigo',
+        icon: subjectForm.icon || 'book',
+        prompt_prefix: subjectForm.prompt_prefix || '',
+        background_chars: subjectForm.background_chars || '',
+        sort_order: Number(subjectForm.sort_order) || 0,
+        is_active: subjectForm.is_active !== false,
+        char_opacity: subjectForm.char_opacity ?? 0.15,
+        char_size_scale: subjectForm.char_size_scale ?? 1.0
+      };
 
-        await updateSubject(subjectForm.code!, updates);
+      if (isEditingSubject) {
+        await updateSubject(subjectForm.code!, dataToSave as any);
       } else {
-        await addSubject(subjectForm as Subject);
+        await addSubject({ ...dataToSave, code: subjectForm.code! } as Subject);
       }
       setShowSubjectModal(false);
       loadData();
     } catch (e: any) {
-      console.error(e);
-      alert(`保存失败: ${e.message || '可能 ID 重复或数据格式错误'}`);
+      console.error('Subject Save Error:', e);
+      const isFetchError = e.message?.includes('fetch') || e.toString().includes('fetch');
+      alert(`保存失败: ${e.message || '未知错误'}${isFetchError ? '\n\n提示: 检测到网络错误 (Failed to fetch)。这通常是因为数据库连接中断、项目被暂停或 SQL 架构未更新。请确保您已在 Supabase 中运行过最新的 SQL 脚本。' : ''}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -399,20 +420,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
     if (!levelForm.code || !levelForm.label) return;
     setIsSubmitting(true);
     try {
+      // Clean data
+      const dataToSave = {
+        label: levelForm.label,
+        sort_order: Number(levelForm.sort_order) || 0,
+        is_active: levelForm.is_active !== false
+      };
+
       if (isEditingLevel) {
-        const updates = { ...levelForm };
-        delete (updates as any).code;
-        delete (updates as any).created_at;
-        delete (updates as any).id;
-        
-        await updateLevel(levelForm.code!, updates);
+        await updateLevel(levelForm.code!, dataToSave);
       } else {
-        await addLevel(levelForm);
+        await addLevel({ ...dataToSave, code: levelForm.code! });
       }
       setShowLevelModal(false);
       loadData();
     } catch (e: any) {
-      alert(`保存失败: ${e.message}`);
+      console.error('Level Save Error:', e);
+      const isFetchError = e.message?.includes('fetch') || e.toString().includes('fetch');
+      alert(`保存失败: ${e.message || '未知错误'}${isFetchError ? '\n\n提示: 检测到网络错误 (Failed to fetch)。如果您的 SQL 脚本未执行完整（尤其是 levels 表），可能会导致此错误。' : ''}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -445,11 +470,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <div className="bg-purple-600 p-1.5 rounded-lg text-white">
-            <Key className="w-5 h-5" />
+        <div className="flex items-center gap-4">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="返回应用"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="bg-purple-600 p-1.5 rounded-lg text-white">
+              <Key className="w-5 h-5" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-800">{t.adminTitle}</h1>
           </div>
-          <h1 className="text-xl font-bold text-gray-800">{t.adminTitle}</h1>
         </div>
         <div className="flex items-center gap-4">
           <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} variant="light" />
@@ -768,9 +804,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, language, onL
                     }
                     return (
                     <div key={item.id} className={`bg-white p-5 rounded-2xl border transition-all hover:shadow-md ${!item.is_active ? 'opacity-80' : ''}`}>
-                      <div className="flex justify-between items-start mb-3"><div><div className="flex items-center gap-2"><h3 className="font-mono text-xl font-bold text-gray-800 tracking-wide">{code}</h3>{isOverLimit && !item.is_active && (<span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> 超限</span>)}</div><p className="text-sm text-gray-500 mt-1">{item.note || '无备注'}</p></div><div className={`px-2 py-0.5 text-xs rounded-full font-medium ${item.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.is_active ? t.enable : t.ban}</div></div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <h3 className="font-mono text-xl font-bold text-gray-800 tracking-wide truncate">{code}</h3>
+                            {isOverLimit && !item.is_active && (
+                              <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 flex items-center gap-0.5">
+                                <AlertTriangle className="w-3 h-3" /> 超限
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">{item.note || '无备注'}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <div className={`px-2 py-0.5 text-xs rounded-full font-medium ${item.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.is_active ? t.enable : t.ban}</div>
+                        </div>
+                      </div>
                       <div className="space-y-3 mb-4"><div className="grid grid-cols-2 gap-2">{!isImageKey && (<div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg"><Smartphone className="w-4 h-4 text-gray-400" /><div><p className="text-xs text-gray-400">设备数</p><span className="font-bold text-gray-900">{item.device_sessions?.[0]?.count || 0}</span></div></div>)}<div onClick={() => openLimitModal(item, isImageKey ? 'image' : 'main')} className={`flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group relative ${isImageKey ? 'col-span-2' : ''}`} title="点击设置限额"><Gauge className={`w-4 h-4 ${isOverLimit ? 'text-red-500' : 'text-blue-500'}`} /><div className="flex-1 min-w-0"><p className="text-xs text-gray-400 flex items-center justify-between">{isImageKey ? t.limitInputImage : 'Token'} <span className="group-hover:opacity-100 opacity-0 text-[10px] text-blue-600 font-bold transition-opacity">设置</span></p><div className="flex items-baseline gap-1 font-bold text-gray-900 truncate"><span>{usage}</span><span className="text-gray-400 font-normal text-xs">/</span>{limit === null ? (<InfinityIcon className="w-3 h-3 text-gray-400" />) : (<span className={isOverLimit ? 'text-red-600' : ''}>{limit}</span>)}</div></div></div></div>{limit !== null && (<div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : percent > 80 ? 'bg-amber-400' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div>)}{connectedInfo}</div>
-                      <div className="flex items-center gap-2 pt-2 border-t mt-2">{!isImageKey && (<button onClick={() => openHistory('key', code, `密钥 ${code} 的历史记录`)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><MessageSquare className="w-4 h-4" />{t.history}</button>)}<button onClick={() => isImageKey ? handleToggleImageKey(item) : handleToggleKey(item)} className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${item.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}><Power className="w-4 h-4" />{item.is_active ? t.ban : t.enable}</button><button onClick={() => handleDelete(code)} className="w-10 flex items-center justify-center py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors" title={t.delete}><Trash2 className="w-4 h-4" /></button></div>
+                      <div className="flex items-center gap-2 pt-2 border-t mt-2">
+                        {!isImageKey && (
+                          <button onClick={() => openHistory('key', code, `密钥 ${code} 的历史记录`)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-100">
+                            <MessageSquare className="w-4 h-4" />{t.history}
+                          </button>
+                        )}
+                        
+                        <button onClick={() => isImageKey ? handleToggleImageKey(item) : handleToggleKey(item)} className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${item.is_active ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-100' : 'text-green-600 bg-green-50 hover:bg-green-100 border border-green-100'}`}><Power className="w-4 h-4" />{item.is_active ? t.ban : t.enable}</button>
+                        <button onClick={() => handleDelete(code)} className="w-10 flex items-center justify-center py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100" title={t.delete}><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
                   );})}
                 </div>

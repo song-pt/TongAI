@@ -72,11 +72,13 @@ const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({ subject, subjectC
     const baseOpacity = subjectConfig?.char_opacity ?? 0.15;
     const baseScale = subjectConfig?.char_size_scale ?? 1.0;
 
-    const initialParticles = Array.from({ length: count }).map((_, i) => 
+    // Use functional update to set initial state silently if possible, 
+    // though for the very first mount this is usually fine.
+    setParticles(Array.from({ length: count }).map((_, i) => 
       generateParticleState(i, charPool, baseOpacity, baseScale)
-    );
-    setParticles(initialParticles);
+    ));
     isFirstMount.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
   // 2. Handle Subject Change (The Animation Logic)

@@ -10,8 +10,10 @@ When deploying to Vercel, you must set the following environment variables in **
 
 | Key | Value |
 |---|---|
-| `VITE_SILICONFLOW_API_KEY` | **OpenAI-compatible API Key** (Supports SiliconFlow, DeepSeek, or any compatible platform) |
-| `VITE_SILICONFLOW_BASE_URL` | **OpenAI-compatible Base URL** (e.g., https://api.siliconflow.cn/v1) |
+| `AI_API_KEY` | **Server-side API Key** (Recommended: OpenRouter). Hidden from client, handles IP bypass and streaming. |
+| `AI_BASE_URL` | **Server-side Base URL** (e.g., https://api.openrouter.ai/api/v1). Used by proxy for global accessibility. |
+| `VITE_SILICONFLOW_API_KEY` | **Legacy Frontend API Key** (Optional if `AI_API_KEY` is set) |
+| `VITE_SILICONFLOW_BASE_URL` | **Legacy Frontend Base URL** (e.g., https://api.siliconflow.cn/v1) |
 | `VITE_SUPABASE_URL` | Your Supabase Project URL |
 | `VITE_SUPABASE_ANON_KEY` | Your Supabase Project API Key |
 | `VITE_ADMIN_PASSWORD` | Admin Password |
@@ -38,8 +40,10 @@ Once this is done, your system is fully operational!
 
 | Key | Value |
 |---|---|
-| `VITE_SILICONFLOW_API_KEY` | **OpenAI 兼容格式的 API 密钥** (支持硅基流动、DeepSeek 或任意兼容 OpenAI 接口的平台) |
-| `VITE_SILICONFLOW_BASE_URL` | **OpenAI 兼容格式的 Base URL** (例如: https://api.siliconflow.cn/v1) |
+| `AI_API_KEY` | **后端代理专用 API 密钥** (推荐填入 OpenRouter 密钥)。这是最关键的变量，用于隐藏用户 IP 并实现流式输出。 |
+| `AI_BASE_URL` | **后端代理 Base URL** (例如: https://api.openrouter.ai/api/v1)。用于解决国内无法直连 AI 服务器的问题。 |
+| `VITE_SILICONFLOW_API_KEY` | **前端直连 API 密钥** (旧版保留，若设置了上面的 AI_API_KEY 则可选) |
+| `VITE_SILICONFLOW_BASE_URL` | **前端直连 Base URL** (例如: https://api.siliconflow.cn/v1) |
 | `VITE_SUPABASE_URL` | 您的 Supabase 项目 URL 地址 |
 | `VITE_SUPABASE_ANON_KEY` | 您的 Supabase 项目 API Key |
 | `VITE_ADMIN_PASSWORD` | 管理员密码 |

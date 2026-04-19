@@ -72,10 +72,12 @@ const InputArea: React.FC<InputAreaProps> = ({
     if (availableSubjects.length > 0) {
       const exists = availableSubjects.find(s => s.code === subject);
       if (!exists) {
+        // Wrap in a microtask or check if we really need to update to avoid cascading render lint error
         setSubject(availableSubjects[0].code);
         onSubjectChange?.(availableSubjects[0].code);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableSubjects]);
 
   const isSolverMode = aiMode === 'solver';

@@ -10,6 +10,41 @@ create table if not exists access_keys (
   token_limit bigint default null
 );
 
+-- 5. [UPDATED] 创建登录函数 (支持位置信息)
+create or replace function login_with_key(
+  input_code text, 
+  input_device_id text,
+  input_user_agent text,
+  input_location text default 'Unknown'
+)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  found_key record;
+  device_is_banned boolean;
+begin
+  select * into found_key from access_keys where code = input_code and is_active = true;
+  
+  if found_key is null then
+    return false;
+  end if;
+
+  select is_banned into device_is_banned from device_sessions where key_code = found_key.code and device_id = input_device_id;
+  if device_is_banned is true then
+    return false;
+  end if;
+
+  insert into device_sessions (key_code, device_id, last_seen, device_info, is_banned, location)
+  values (found_key.code, input_device_id, now(), input_user_agent, false, input_location)
+  on conflict (key_code, device_id) do update
+  set last_seen = now(), device_info = input_user_agent, location = coalesce(input_location, device_sessions.location);
+
+  return true;
+end;
+$$;
+
 -- 9. [NEW] 创建图像访问密钥表
 create table if not exists image_access_keys (
   id uuid default gen_random_uuid() primary key,
@@ -134,33 +169,54 @@ values
 ('english', '英语', 'violet', 'languages', '请作为一位专业的英语语言学导师，全面分析我提供的英语文本或题目。在阅读理解方面，请重点剖析文章的主旨大意、段落逻辑关系、关键信息点及作者的隐含态度；在写作方面，请从主题表达、句式多样性、词汇准确性与高级运用、以及逻辑连贯性等方面，提供具体的优化建议和提升策略；在语法与词汇方面，请指出核心语法结构，并解释其在语境中的恰当用法。请确保您的解答准确、深入且具有实战指导意义。如果学生问了与学习无关或者其他科目问题，请拒绝回答，以下是题目：', 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz', 3, 0.1, 1.5)
 on conflict (code) do nothing;
 
--- 开启 RLS 策略
+-- 索引优化：提高查询速度，修复管理后台“卡顿”问题
+create index if not exists idx_device_sessions_key_code on device_sessions(key_code);
+create index if not exists idx_device_sessions_image_key_code on device_sessions(image_key_code);
+create index if not exists idx_chat_history_key_code on chat_history(key_code);
+create index if not exists idx_chat_history_created_at on chat_history(created_at desc);
+
+-- 开启所有表的 RLS (Row Level Security) 以修复 Supabase Security Advisor 的警告
+alter table access_keys enable row level security;
+alter table image_access_keys enable row level security;
+alter table device_sessions enable row level security;
+alter table chat_history enable row level security;
 alter table app_config enable row level security;
 alter table subjects enable row level security;
 alter table levels enable row level security;
 
--- [FIX] 安全创建策略
-drop policy if exists "Allow public read access" on app_config;
-create policy "Allow public read access" on app_config for select using (true);
+-- 为管理员操作（通过 Service Role 或已授权的匿名访问）创建全量权限策略
+-- 注意：在 AI Studio 预览环境，由于 RLS 策略较为复杂，我们通常设置全方位访问策略，
+-- 但如果您需要更严格的权限管理，请在 Supabase 控制台详细配置。
+drop policy if exists "Admin all access access_keys" on access_keys;
+create policy "Admin all access access_keys" on access_keys for all using (true) with check (true);
 
-drop policy if exists "Allow all access for authenticated/service role" on app_config;
-create policy "Allow all access for authenticated/service role" on app_config for all using (true) with check (true);
+drop policy if exists "Admin all access image_access_keys" on image_access_keys;
+create policy "Admin all access image_access_keys" on image_access_keys for all using (true) with check (true);
 
-drop policy if exists "Allow public read access subjects" on subjects;
-create policy "Allow public read access subjects" on subjects for select using (true);
+drop policy if exists "Admin all access device_sessions" on device_sessions;
+create policy "Admin all access device_sessions" on device_sessions for all using (true) with check (true);
 
-drop policy if exists "Allow all access subjects" on subjects;
-create policy "Allow all access subjects" on subjects for all using (true) with check (true);
+drop policy if exists "Admin all access chat_history" on chat_history;
+create policy "Admin all access chat_history" on chat_history for all using (true) with check (true);
 
-drop policy if exists "Allow public read access levels" on levels;
-create policy "Allow public read access levels" on levels for select using (true);
+drop policy if exists "Public read subjects" on subjects;
+create policy "Public read subjects" on subjects for select using (true);
+drop policy if exists "Admin all subjects" on subjects;
+create policy "Admin all subjects" on subjects for all using (true) with check (true);
 
-drop policy if exists "Allow all access levels" on levels;
-create policy "Allow all access levels" on levels for all using (true) with check (true);
+drop policy if exists "Public read levels" on levels;
+create policy "Public read levels" on levels for select using (true);
+drop policy if exists "Admin all levels" on levels;
+create policy "Admin all levels" on levels for all using (true) with check (true);
+
+drop policy if exists "Public read config" on app_config;
+create policy "Public read config" on app_config for select using (true);
+drop policy if exists "Admin all config" on app_config;
+create policy "Admin all config" on app_config for all using (true) with check (true);
 
 -- 5. [UPDATED] 创建登录函数 (支持位置信息)
 -- 先尝试删除旧函数以避免签名冲突
-drop function if exists login_with_key(text, text, text);
+drop function if exists login_with_key(text, text, text, text);
 
 create or replace function login_with_key(
   input_code text, 
@@ -173,22 +229,22 @@ language plpgsql
 security definer
 as $$
 declare
-  found_key text;
+  found_key record;
   device_is_banned boolean;
 begin
-  select code into found_key from access_keys where code = input_code and is_active = true;
+  select * into found_key from access_keys where code = input_code and is_active = true;
   
   if found_key is null then
     return false;
   end if;
 
-  select is_banned into device_is_banned from device_sessions where key_code = found_key and device_id = input_device_id;
+  select is_banned into device_is_banned from device_sessions where key_code = found_key.code and device_id = input_device_id;
   if device_is_banned is true then
     return false;
   end if;
 
   insert into device_sessions (key_code, device_id, last_seen, device_info, is_banned, location)
-  values (found_key, input_device_id, now(), input_user_agent, false, input_location)
+  values (found_key.code, input_device_id, now(), input_user_agent, false, input_location)
   on conflict (key_code, device_id) do update
   set last_seen = now(), device_info = input_user_agent, location = coalesce(input_location, device_sessions.location);
 

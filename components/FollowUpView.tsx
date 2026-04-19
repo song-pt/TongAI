@@ -54,23 +54,39 @@ const FollowUpView: React.FC<FollowUpViewProps> = ({
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
+    const aiMsgId = (Date.now() + 1).toString();
+    const initialAiMsg: Message = {
+      id: aiMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now() + 1
+    };
+    setMessages(prev => [...prev, initialAiMsg]);
+
     try {
-      const { answer } = await continueConversation(messages, text, userKey);
+      const { answer } = await continueConversation(
+        messages, 
+        text, 
+        userKey, 
+        (chunk) => {
+          setMessages(prev => prev.map(m => 
+            m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
+          ));
+        }
+      );
       
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: answer,
-        timestamp: Date.now() + 1
-      };
-      setMessages(prev => [...prev, aiMsg]);
+      // Final update to ensure tokens/consistency if needed
+      setMessages(prev => prev.map(m => 
+        m.id === aiMsgId ? { ...m, content: answer } : m
+      ));
     } catch (error) {
       console.error(error);
+      setMessages(prev => prev.filter(m => m.id !== aiMsgId)); // Remove the empty/unfinished AI message
       const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: (Date.now() + 2).toString(),
         role: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
-        timestamp: Date.now() + 1
+        timestamp: Date.now() + 2
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {

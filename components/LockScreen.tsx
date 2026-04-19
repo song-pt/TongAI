@@ -51,10 +51,10 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, language, onLanguageC
         }
       } else {
         // Database User Check (Location removed from UI, defaulting to Web User)
-        const success = await loginUser(keyToUse.trim(), "Web User");
-        if (success) {
+        const result = await loginUser(keyToUse.trim(), "Web User");
+        if (result.success) {
           localStorage.setItem('tongai_last_key', keyToUse.trim());
-          onUnlock(false, keyToUse.trim());
+          onUnlock(result.isAdmin, keyToUse.trim());
         } else {
           setError(t.invalidKey);
           if (showQuickLogin && keyToUse === savedKey) {

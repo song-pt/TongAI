@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { solveMathProblem } from './services/api';
+import { solveMathProblem, testAiConnection } from './services/api';
 import { fetchChatHistory, saveChatMessageMerged, getAppTitle, getAiMode, verifyImageKey, fetchSubjects, getAppLogo, getShowUsageToUser, getKeyUsage, getImageKeyUsage, fetchLevels, getWebSearchEnabled } from './services/supabase';
 import MathRenderer from './components/MathRenderer';
 import InputArea, { getIconComponent } from './components/InputArea';
@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [streamingAnswer, setStreamingAnswer] = useState('');
   const [currentSubject, setCurrentSubject] = useState('math');
   const [appTitle, setAppTitle] = useState('TongAI');
   const [appLogo, setAppLogo] = useState('');
@@ -43,6 +44,8 @@ const App: React.FC = () => {
   
   // Feature Toggles
   const [allowWebSearch, setAllowWebSearch] = useState(false);
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   
   // Search State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -115,8 +118,11 @@ const App: React.FC = () => {
         console.error("Failed to load app config");
       }
     };
-    loadConfig();
-  }, [isAuthenticated]); 
+
+    if (isAuthenticated || isAdmin) {
+      loadConfig();
+    }
+  }, [isAuthenticated, isAdmin, isAdminView]); 
 
   // Load Key Usage if enabled
   useEffect(() => {
@@ -240,6 +246,7 @@ const App: React.FC = () => {
     const levelLabel = getLevelLabelByCode(gradeCode);
 
     try {
+      setStreamingAnswer('');
       const { answer, tokens } = await solveMathProblem(
         question, 
         levelLabel, 
@@ -250,7 +257,8 @@ const App: React.FC = () => {
         imageData, 
         isImageAuthenticated ? imageKey : undefined,
         customPrompt, // Pass dynamic prompt
-        useSearch // Pass search flag
+        useSearch, // Pass search flag
+        (chunk) => setStreamingAnswer(prev => prev + chunk)
       );
       
       const newItem: SolutionItem = {
@@ -320,6 +328,28 @@ const App: React.FC = () => {
     return false;
   };
 
+  const handleConnectionTest = async () => {
+    if (isTestingConnection) return;
+    setIsTestingConnection(true);
+    try {
+      const { answer } = await testAiConnection();
+      
+      const testItem = {
+        id: 'test-' + Date.now(),
+        question: '连接测试 (Connection Test)',
+        subject: 'system',
+        answer: answer,
+        timestamp: Date.now(),
+      };
+      
+      setHistory(prev => [testItem as any, ...prev].slice(0, 50));
+    } catch (error: any) {
+      alert(`连接测试失败: ${error.message}`);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const getSubjectUI = (subjectCode: string) => {
     const sub = subjects.find(s => s.code === subjectCode);
     const label = sub?.label || subjectCode;
@@ -386,6 +416,7 @@ const App: React.FC = () => {
         onUnlock={(adminMode, code) => {
           setIsAuthenticated(true);
           setIsAdmin(adminMode);
+          if (adminMode) setIsAdminView(true);
           if (code) setUserKey(code);
           setIsImageAuthenticated(false);
           setImageKey('');
@@ -396,10 +427,11 @@ const App: React.FC = () => {
     );
   }
 
-  if (isAdmin) {
+  if (isAdmin && isAdminView) {
     return (
       <AdminDashboard 
         onLogout={() => { setIsAuthenticated(false); setIsAdmin(false); setUserKey(''); }} 
+        onBack={() => setIsAdminView(false)}
         language={language}
         onLanguageChange={handleLanguageChange}
       />
@@ -418,6 +450,9 @@ const App: React.FC = () => {
         onLanguageChange={handleLanguageChange}
         onSearchClick={() => setIsSearchOpen(!isSearchOpen)}
         isSearchOpen={isSearchOpen}
+        isAdmin={isAdmin}
+        onConnectionTest={handleConnectionTest}
+        onAdminClick={() => setIsAdminView(true)}
       />
 
       <main className="relative flex-1 w-full max-w-5xl mx-auto px-4 pt-24 pb-12 flex flex-col gap-8 z-10">
@@ -486,21 +521,31 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading State / Streaming Area */}
         {isLoading && currentQuestion && (
-           <div className="max-w-3xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <div className="max-w-3xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 mb-8">
              <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">Q</div>
                   <p className="font-medium text-gray-700 line-clamp-1">{currentQuestion}</p>
                 </div>
-                <div className="p-8 flex flex-col items-center justify-center gap-4 min-h-[200px]">
-                  <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
-                    <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+                {streamingAnswer ? (
+                  <div className="px-8 py-8 animate-in fade-in duration-300">
+                     <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                       <span>{t.expertAnalysis}</span>
+                       <div className="h-px bg-gray-100 flex-grow"></div>
+                     </h3>
+                     <MathRenderer content={streamingAnswer} />
                   </div>
-                  <p className="text-gray-500 font-medium animate-pulse">{t.loading}</p>
-                </div>
+                ) : (
+                  <div className="p-8 flex flex-col items-center justify-center gap-4 min-h-[200px]">
+                    <div className="relative w-16 h-16">
+                      <div className="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
+                      <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-gray-500 font-medium animate-pulse">{t.loading}</p>
+                  </div>
+                )}
              </div>
            </div>
         )}

@@ -77,28 +77,48 @@ const getSimplifiedUserAgent = (): string => {
 };
 
 // User Login: Verify key and log session via RPC
-export const loginUser = async (code: string, location?: string): Promise<boolean> => {
+export const loginUser = async (code: string, location?: string): Promise<{ success: boolean; isAdmin: boolean }> => {
   if (isPlaceholderClient()) {
     console.warn("Login bypassed (Placeholder Mode)");
-    return true; 
+    return { success: true, isAdmin: false }; 
   }
 
   const deviceId = getDeviceId();
-  const userAgent = getSimplifiedUserAgent(); // Simplified UA
+  const userAgent = getSimplifiedUserAgent(); 
+  const trimmedCode = code.trim();
   
-  const { data, error } = await supabase.rpc('login_with_key', {
-    input_code: code,
+  // Try with 'input_' prefix (Standard Version)
+  let result = await supabase.rpc('login_with_key', {
+    input_code: trimmedCode,
     input_device_id: deviceId,
     input_user_agent: userAgent,
-    input_location: location || 'Unknown' // Pass location
+    input_location: location || 'Unknown'
   });
 
-  if (error) {
-    console.error('Login error:', error);
-    return false;
+  // If failed with potential parameter mismatch, try 'in_' prefix (Rewrite Version)
+  if (result.error && (result.error.message.includes('parameter') || result.error.message.includes('not found'))) {
+    console.warn('Retrying login with alternative parameter names...');
+    result = await supabase.rpc('login_with_key', {
+      in_code: trimmedCode,
+      in_device_id: deviceId,
+      in_ua: userAgent,
+      in_loc: location || 'Unknown'
+    });
   }
 
-  return data as boolean;
+  if (result.error) {
+    console.error('Login error:', result.error);
+    return { success: false, isAdmin: false };
+  }
+
+  const data = result.data;
+  // Handle both boolean and object return from RPC
+  const success = typeof data === 'boolean' ? data : (data as any)?.success === true;
+
+  return {
+    success: !!success,
+    isAdmin: (data as any)?.is_admin === true // Keep for backward compatibility if SQL still returns it
+  };
 };
 
 // Verify and Link Image Key
@@ -577,6 +597,7 @@ export const deleteLevel = async (code: string): Promise<void> => {
 
 // --- Admin Features ---
 
+
 // Admin: Fetch all keys with device counts
 export const fetchKeys = async (): Promise<AccessKey[]> => {
   if (isPlaceholderClient()) {
@@ -586,7 +607,10 @@ export const fetchKeys = async (): Promise<AccessKey[]> => {
 
   const { data, error } = await supabase
     .from('access_keys')
-    .select('*, device_sessions(count)')
+    .select(`
+      *,
+      device_sessions (count)
+    `)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -594,10 +618,8 @@ export const fetchKeys = async (): Promise<AccessKey[]> => {
     throw new Error(error.message);
   }
 
-  return data || [];
+  return data as AccessKey[];
 };
-
-// Admin: Fetch all IMAGE keys
 export const fetchImageKeys = async (): Promise<ImageAccessKey[]> => {
   if (isPlaceholderClient()) return [];
 
@@ -683,6 +705,8 @@ export const toggleKeyStatus = async (id: string, currentStatus: boolean): Promi
 
   if (error) throw new Error(error.message);
 };
+
+
 
 // Admin: Toggle IMAGE key status
 export const toggleImageKeyStatus = async (id: string, currentStatus: boolean): Promise<void> => {
